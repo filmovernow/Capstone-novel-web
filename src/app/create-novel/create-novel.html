@@ -1,0 +1,272 @@
+<div class="bg-[#0C134F] text-[#D4ADFC] min-h-screen font-sans">
+
+  <nav class="fixed top-0 w-full z-50 bg-[#0C134F]/90 backdrop-blur border-b border-[#1D267D]">
+    <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <a routerLink="/writer" class="text-[#7B6FA0] hover:text-[#D4ADFC] text-sm transition-colors">
+          ← กลับ
+        </a>
+        <span class="text-[#5C469C]">/</span>
+        <span class="text-white text-sm font-semibold">
+          {{ novelTitle || 'นิยายใหม่' }}
+        </span>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="text-xs text-[#7B6FA0]">{{ saveStatus }}</span>
+        <button (click)="saveDraft()"
+          class="border border-[#5C469C] text-[#D4ADFC] text-sm px-4 py-1.5 rounded-full hover:bg-[#5C469C]/30 transition-colors">
+          💾 บันทึกร่าง
+        </button>
+        <button (click)="publish()"
+          class="bg-[#D4ADFC] text-[#0C134F] font-bold text-sm px-5 py-1.5 rounded-full hover:bg-[#B085E8] transition-colors">
+          🚀 เผยแพร่
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="max-w-7xl mx-auto px-6 pt-24 pb-16 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8">
+
+    <div class="space-y-6">
+
+      <div class="bg-[#1D267D]/60 border border-[#5C469C]/30 rounded-2xl p-6 space-y-5">
+        <h2 class="text-white font-semibold flex items-center gap-2">
+          <span class="w-1 h-5 bg-[#D4ADFC] rounded-full inline-block"></span>
+          ข้อมูลนิยาย
+        </h2>
+
+        <div class="space-y-1.5">
+          <label class="text-xs font-semibold text-[#9B8CC4] uppercase tracking-wide">ชื่อนิยาย *</label>
+          <input [(ngModel)]="novelTitle" name="novelTitle"
+            placeholder="ใส่ชื่อนิยายของคุณ..."
+            class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-xl px-4 py-3 text-white text-sm placeholder-[#7B6FA0] outline-none focus:border-[#D4ADFC] transition-all duration-200" />
+        </div>
+
+        <div class="space-y-1.5">
+          <label class="text-xs font-semibold text-[#9B8CC4] uppercase tracking-wide">นามปากกา (ชื่อผู้แต่ง) *</label>
+          <input [(ngModel)]="penName" name="penName"
+            placeholder="ชื่อที่จะแสดงต่อผู้อ่าน..."
+            class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-xl px-4 py-3 text-white text-sm placeholder-[#7B6FA0] outline-none focus:border-[#D4ADFC] transition-all duration-200" />
+        </div>
+
+        <div class="space-y-1.5">
+          <label class="text-xs font-semibold text-[#9B8CC4] uppercase tracking-wide">เรื่องย่อ</label>
+          <textarea [(ngModel)]="synopsis" name="synopsis" rows="4"
+            placeholder="บรรยายเรื่องราวสั้นๆ เพื่อดึงดูดผู้อ่าน..."
+            class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-xl px-4 py-3 text-white text-sm placeholder-[#7B6FA0] outline-none focus:border-[#D4ADFC] transition-all duration-200 resize-none"></textarea>
+        </div>
+
+        <div class="space-y-2">
+          <label class="text-xs font-semibold text-[#9B8CC4] uppercase tracking-wide">แนวนิยาย</label>
+          <div class="flex flex-wrap gap-2">
+            <button *ngFor="let g of genres"
+              (click)="toggleGenre(g)"
+              [class]="selectedGenres.includes(g)
+                ? 'text-xs bg-[#5C469C] text-white px-3 py-1.5 rounded-full transition-colors'
+                : 'text-xs border border-[#5C469C]/50 text-[#9B8CC4] px-3 py-1.5 rounded-full hover:bg-[#5C469C]/30 transition-colors'">
+              {{g}}
+            </button>
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <label class="text-xs font-semibold text-[#9B8CC4] uppercase tracking-wide">แท็กนิยาย</label>
+          <div class="flex flex-wrap gap-2 mb-2" *ngIf="selectedTags.length > 0">
+            <span *ngFor="let tag of selectedTags"
+              class="text-xs bg-[#D4ADFC]/20 text-[#D4ADFC] px-3 py-1.5 rounded-full flex items-center gap-1.5 border border-[#D4ADFC]/30">
+              #{{tag}}
+              <button (click)="removeTag(tag)" class="hover:text-red-400 transition-colors">✕</button>
+            </span>
+          </div>
+          <div class="flex flex-wrap gap-2 mb-2">
+            <button *ngFor="let tag of tagSuggestions"
+              (click)="toggleTag(tag)"
+              [class]="selectedTags.includes(tag) ? 'hidden' : 'text-xs border border-[#5C469C]/50 text-[#7B6FA0] px-3 py-1.5 rounded-full hover:bg-[#5C469C]/30 transition-colors'">
+              #{{tag}}
+            </button>
+          </div>
+          <div class="flex gap-2">
+            <input [(ngModel)]="newTag" name="newTag"
+              (keyup.enter)="addTag()"
+              placeholder="เพิ่มแท็กของคุณเอง..."
+              class="flex-1 bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-xl px-4 py-2 text-white text-xs placeholder-[#7B6FA0] outline-none focus:border-[#D4ADFC] transition-all duration-200" />
+            <button (click)="addTag()"
+              class="bg-[#5C469C]/50 hover:bg-[#5C469C] text-[#D4ADFC] px-4 py-2 rounded-xl text-xs font-semibold transition-colors">
+              เพิ่ม
+            </button>
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <label class="text-xs font-semibold text-[#9B8CC4] uppercase tracking-wide">ปกนิยาย</label>
+          <div class="flex gap-3 items-start">
+            <div class="flex-1">
+              <label class="cursor-pointer">
+                <div class="bg-[#0C134F]/60 border-2 border-dashed border-[#5C469C]/50 rounded-xl p-4 hover:border-[#D4ADFC]/50 transition-all text-center">
+                  <input type="file" accept="image/*" (change)="handleCoverImageUpload($event)" class="hidden" />
+                  <div *ngIf="!coverImageUrl">
+                    <div class="text-3xl mb-2">🖼️</div>
+                    <p class="text-xs text-[#7B6FA0]">คลิกเพื่ออัพโหลดรูปปก</p>
+                  </div>
+                  <div *ngIf="coverImageUrl" class="relative">
+                    <img [src]="coverImageUrl" class="w-full h-40 object-cover rounded-lg" />
+                    <button (click)="removeCoverImage(); $event.stopPropagation()"
+                      class="absolute top-2 right-2 bg-red-500/80 hover:bg-red-600 text-white w-6 h-6 rounded-full text-xs transition-colors">
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              </label>
+            </div>
+            <div class="flex-1" *ngIf="!coverImageUrl">
+              <p class="text-xs text-[#7B6FA0] mb-2">หรือเลือกอีโมจิ</p>
+              <div class="flex gap-2 flex-wrap">
+                <button *ngFor="let e of coverEmojis"
+                  (click)="selectedCover = e"
+                  [class]="selectedCover === e ? 'w-12 h-12 rounded-xl bg-[#5C469C] text-2xl flex items-center justify-center border-2 border-[#D4ADFC] transition-all' : 'w-12 h-12 rounded-xl bg-[#0C134F]/60 text-2xl flex items-center justify-center border border-[#5C469C]/40 hover:border-[#5C469C] transition-all'">
+                  {{e}}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="activeChapter" class="bg-[#1D267D]/60 border border-[#5C469C]/30 rounded-2xl p-6 space-y-4">
+        <h2 class="text-white font-semibold flex items-center gap-2">
+          <span class="w-1 h-5 bg-[#D4ADFC] rounded-full inline-block"></span>
+          ✏️ กำลังเขียน: ตอนที่ {{activeChapter.order}}
+        </h2>
+
+        <input [(ngModel)]="activeChapter.title" name="chapterTitle"
+          placeholder="ชื่อตอน..."
+          class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-xl px-4 py-3 text-white text-sm placeholder-[#7B6FA0] outline-none focus:border-[#D4ADFC] transition-all duration-200" />
+
+        <div class="bg-[#0C134F]/40 border border-[#5C469C]/30 rounded-xl p-4 space-y-3">
+          <button (click)="toggleMonetization()"
+            class="flex items-center justify-between w-full text-left">
+            <span class="text-xs font-semibold text-[#9B8CC4] flex items-center gap-2">💰 การตั้งค่าการเข้าถึง</span>
+            <span class="text-[#7B6FA0]">{{showMonetization ? '▼' : '▶'}}</span>
+          </button>
+          
+          <div *ngIf="showMonetization" class="space-y-3 pt-2">
+            <div class="flex gap-2">
+              <button (click)="setAccessType('free')"
+                [class]="activeChapter.accessType === 'free' ? 'flex-1 bg-[#5C469C] text-white text-[11px] px-2 py-2 rounded-lg transition-colors font-medium' : 'flex-1 bg-[#0C134F]/60 border border-[#5C469C]/50 text-[#9B8CC4] text-[11px] px-2 py-2 rounded-lg hover:bg-[#5C469C]/30 transition-colors font-medium'">
+                🆓 อ่านฟรี
+              </button>
+              <button (click)="setAccessType('paid')"
+                [class]="activeChapter.accessType === 'paid' ? 'flex-1 bg-[#5C469C] text-white text-[11px] px-2 py-2 rounded-lg transition-colors font-medium' : 'flex-1 bg-[#0C134F]/60 border border-[#5C469C]/50 text-[#9B8CC4] text-[11px] px-2 py-2 rounded-lg hover:bg-[#5C469C]/30 transition-colors font-medium'">
+                🪙 ซื้อถาวร
+              </button>
+              <button (click)="setAccessType('earlyAccess')"
+                [class]="activeChapter.accessType === 'earlyAccess' ? 'flex-1 bg-[#5C469C] text-white text-[11px] px-2 py-2 rounded-lg transition-colors font-medium' : 'flex-1 bg-[#0C134F]/60 border border-[#5C469C]/50 text-[#9B8CC4] text-[11px] px-2 py-2 rounded-lg hover:bg-[#5C469C]/30 transition-colors font-medium'">
+                ⏱️ อ่านล่วงหน้า
+              </button>
+            </div>
+            
+            <div *ngIf="activeChapter.accessType !== 'free'" class="space-y-3 pt-2 border-t border-[#5C469C]/30">
+              <div class="space-y-1.5">
+                <label class="text-[10px] text-[#9B8CC4]">{{ activeChapter.accessType === 'earlyAccess' ? 'ราคาอ่านล่วงหน้า (เหรียญ)' : 'ราคา (เหรียญ)' }}</label>
+                <input [(ngModel)]="activeChapter.price" name="chapterPrice" type="number" min="1"
+                  class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-lg px-3 py-2 text-white text-xs outline-none focus:border-[#D4ADFC] transition-all" />
+              </div>
+              
+              <div *ngIf="activeChapter.accessType === 'earlyAccess'" class="space-y-1.5">
+                <label class="text-[10px] text-[#9B8CC4]">วันที่เปิดให้อ่านฟรี</label>
+                <input [(ngModel)]="activeChapter.scheduledDate" name="scheduledDate" type="datetime-local"
+                  class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-lg px-3 py-2 text-white text-xs outline-none focus:border-[#D4ADFC] transition-all [color-scheme:dark]" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="relative flex flex-col shadow-lg rounded-xl overflow-hidden border border-[#5C469C]/50">
+          <editor 
+            apiKey="no-api-key" 
+            [(ngModel)]="activeChapter.content" 
+            [init]="editorConfig">
+          </editor>
+        </div>
+
+        <div class="flex justify-between items-center text-xs text-[#7B6FA0]">
+          <button (click)="saveChapter()" class="text-[#D4ADFC] hover:text-[#B085E8] transition-colors ml-auto">💾 บันทึกตอนนี้</button>
+        </div>
+      </div>
+
+      <div *ngIf="!activeChapter" class="bg-[#1D267D]/30 border border-dashed border-[#5C469C]/40 rounded-2xl p-12 text-center">
+        <div class="text-5xl mb-3 opacity-30">📄</div>
+        <p class="text-[#7B6FA0] text-sm">เลือกตอนจากด้านขวา หรือสร้างตอนใหม่เพื่อเริ่มเขียน</p>
+      </div>
+    </div>
+
+    <aside class="space-y-4 relative">
+      <div class="sticky top-24 space-y-4">
+        
+        <div class="bg-[#1D267D]/60 border border-[#5C469C]/30 rounded-2xl p-5">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-white font-semibold text-sm flex items-center gap-2">
+              <span class="w-1 h-4 bg-[#D4ADFC] rounded-full"></span>
+              รายการตอน
+            </h3>
+            <span class="text-xs text-[#7B6FA0]">{{chapters.length}} ตอน</span>
+          </div>
+
+          <div class="space-y-2 mb-4 max-h-[300px] overflow-y-auto pr-1">
+            <div *ngFor="let ch of chapters; let i = index"
+              (click)="selectChapter(ch)"
+              [class]="activeChapter?.id === ch.id
+                ? 'flex items-center gap-3 bg-[#5C469C]/50 border border-[#D4ADFC]/30 rounded-xl px-3 py-2.5 cursor-pointer transition-all'
+                : 'flex items-center gap-3 bg-[#0C134F]/40 border border-[#5C469C]/20 rounded-xl px-3 py-2.5 cursor-pointer hover:bg-[#5C469C]/20 hover:border-[#5C469C]/50 transition-all'">
+
+              <span class="text-xs font-bold text-[#7B6FA0] w-5 shrink-0">{{ch.order}}</span>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm text-white truncate">{{ ch.title || 'ตอนที่ ' + ch.order }}</p>
+              </div>
+              <span [class]="ch.published ? 'w-2 h-2 rounded-full bg-[#72f5c8] shrink-0' : 'w-2 h-2 rounded-full bg-[#5C469C] shrink-0'"></span>
+              <button (click)="deleteChapter(i, $event)" class="text-[#5C469C] hover:text-red-400 text-xs transition-colors shrink-0">✕</button>
+            </div>
+          </div>
+
+          <button (click)="addChapter()" class="w-full flex items-center justify-center gap-2 bg-[#5C469C]/30 hover:bg-[#5C469C]/50 border border-[#5C469C]/40 hover:border-[#D4ADFC]/30 text-[#D4ADFC] text-sm font-semibold py-2.5 rounded-xl transition-all duration-200">
+            ＋ เพิ่มตอนใหม่
+          </button>
+        </div>
+
+        <div *ngIf="activeChapter?.published" class="bg-[#1D267D]/60 border border-[#5C469C]/30 rounded-2xl p-5 space-y-4 animate-in fade-in duration-300">
+          <h3 class="text-white font-semibold text-sm flex items-center gap-2">
+            <span class="w-1 h-4 bg-[#D4ADFC] rounded-full"></span>
+            💬 ความคิดเห็น ({{activeChapter?.comments?.length || 0}})
+          </h3>
+
+          <div class="bg-[#0C134F]/40 border border-[#5C469C]/30 rounded-xl p-3 space-y-2">
+            <textarea #commentInput rows="2" placeholder="เขียนความคิดเห็น..." class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-lg px-3 py-2 text-white text-xs placeholder-[#7B6FA0] outline-none focus:border-[#D4ADFC] transition-all resize-none"></textarea>
+            <button (click)="addComment(commentInput.value); commentInput.value = ''" class="w-full bg-[#D4ADFC] text-[#0C134F] text-xs px-4 py-1.5 rounded-lg font-semibold hover:bg-[#B085E8] transition-colors">
+              ส่งความคิดเห็น
+            </button>
+          </div>
+
+          <div class="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+            <div *ngFor="let comment of activeChapter?.comments" class="bg-[#0C134F]/40 border border-[#5C469C]/20 rounded-xl p-3 space-y-2">
+              <div class="flex items-start gap-2">
+                <div class="text-xl">{{comment.avatar}}</div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex flex-col mb-1">
+                    <span class="text-xs font-semibold text-white truncate">{{comment.username}}</span>
+                    <span class="text-[9px] text-[#7B6FA0]">{{comment.timestamp | date:'short'}}</span>
+                  </div>
+                  <p class="text-[11px] text-[#D4ADFC] leading-relaxed break-words">{{comment.content}}</p>
+                </div>
+              </div>
+            </div>
+            <div *ngIf="!activeChapter?.comments || activeChapter?.comments?.length === 0" class="text-center py-4 text-[#7B6FA0] text-xs">
+              ยังไม่มีความคิดเห็น
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </aside>
+
+  </div>
+</div>

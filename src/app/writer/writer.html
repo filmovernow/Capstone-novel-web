@@ -1,0 +1,125 @@
+<div class="bg-[#0C134F] text-[#D4ADFC] min-h-screen font-sans">
+
+  <!-- NAVBAR -->
+  <nav class="fixed top-0 w-full z-50 bg-[#0C134F]/90 backdrop-blur border-b border-[#1D267D]">
+    <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+      <a routerLink="/" class="flex items-center gap-2 font-semibold text-xl">
+        <span class="text-2xl">📚</span>
+        <span class="text-white">NovelHub</span>
+      </a>
+      <div class="flex items-center gap-3">
+        <a routerLink="/" class="text-sm text-[#9B8CC4] hover:text-[#D4ADFC] transition-colors">หน้าหลัก</a>
+        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#5C469C] to-[#D4ADFC] flex items-center justify-center text-sm font-bold text-[#0C134F]">น</div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="max-w-7xl mx-auto px-6 pt-28 pb-16">
+
+    <!-- PAGE HEADER -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10">
+      <div>
+        <p class="text-[#7B6FA0] text-sm mb-1">แดชบอร์ดนักเขียน</p>
+        <h1 class="text-3xl font-semibold text-white">นิยายของฉัน ✍️</h1>
+      </div>
+      <a routerLink="/writer/create"
+        class="flex items-center gap-2 bg-[#D4ADFC] text-[#0C134F] font-bold text-sm px-6 py-3 rounded-full hover:bg-[#B085E8] active:scale-[0.98] transition-all duration-200 shadow-lg shadow-[#5C469C]/30 self-start md:self-auto">
+        <span class="text-lg">＋</span> สร้างนิยายใหม่
+      </a>
+    </div>
+
+    <!-- STATS ROW -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+      <div *ngFor="let stat of stats"
+        class="bg-[#1D267D]/60 border border-[#5C469C]/30 rounded-2xl p-4 flex flex-col gap-1">
+        <span class="text-2xl">{{stat.icon}}</span>
+        <p class="text-2xl font-semibold text-white">{{stat.value}}</p>
+        <p class="text-xs text-[#7B6FA0]">{{stat.label}}</p>
+      </div>
+    </div>
+
+    <!-- TABS -->
+    <div class="flex gap-2 mb-6 flex-wrap">
+      <button *ngFor="let tab of tabs"
+        (click)="selectedTab = tab.key"
+        [class]="selectedTab === tab.key
+          ? 'flex items-center gap-2 bg-[#5C469C] text-white text-sm px-4 py-2 rounded-full transition-colors'
+          : 'flex items-center gap-2 border border-[#5C469C] text-[#9B8CC4] text-sm px-4 py-2 rounded-full hover:bg-[#5C469C]/30 hover:text-white transition-colors'">
+        {{tab.icon}} {{tab.label}}
+        <span class="text-[10px] bg-[#0C134F]/40 px-1.5 py-0.5 rounded-full">{{tab.count}}</span>
+      </button>
+    </div>
+
+    <!-- NOVEL LIST -->
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+      <div *ngFor="let novel of filteredNovels"
+        class="bg-[#1D267D]/60 border border-[#5C469C]/30 rounded-2xl overflow-hidden hover:border-[#D4ADFC]/40 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group">
+
+        <!-- COVER AREA -->
+        <div class="h-32 bg-gradient-to-br relative flex items-end p-4"
+             [ngClass]="novel.bg">
+          <span class="absolute top-3 right-3 text-3xl opacity-60 group-hover:opacity-100 transition-opacity">{{novel.icon}}</span>
+          <span class="text-[10px] font-bold px-2.5 py-1 rounded-full" [ngClass]="novel.statusClass">
+            {{novel.statusLabel}}
+          </span>
+        </div>
+
+        <!-- INFO -->
+        <div class="p-4">
+          <h3 class="text-white font-semibold text-sm mb-1 line-clamp-1">{{novel.title}}</h3>
+          <p class="text-[#7B6FA0] text-xs mb-3 line-clamp-2">{{novel.desc}}</p>
+
+          <div class="flex gap-1 flex-wrap mb-3">
+            <span *ngFor="let t of novel.tags"
+              class="text-[10px] bg-[#5C469C]/40 text-[#D4ADFC] px-2 py-0.5 rounded-full">{{t}}</span>
+          </div>
+
+          <div *ngIf="novel.status === 'writing'" class="mb-3">
+            <div class="flex justify-between text-[10px] text-[#7B6FA0] mb-1">
+              <span>ความคืบหน้า</span>
+              <span>{{novel.progress}}%</span>
+            </div>
+            <div class="w-full bg-[#0C134F] rounded-full h-1.5">
+              <div class="bg-gradient-to-r from-[#5C469C] to-[#D4ADFC] h-1.5 rounded-full transition-all duration-500"
+                   [style.width]="novel.progress + '%'"></div>
+            </div>
+          </div>
+
+          <div class="flex justify-between text-xs text-[#7B6FA0] mb-4">
+            <span>📖 {{novel.chapters}} ตอน</span>
+            <span>👁 {{novel.views}}</span>
+            <span>❤️ {{novel.likes}}</span>
+          </div>
+
+          <div class="flex gap-2">
+            <a routerLink="/writer/create"
+              class="flex-1 text-center bg-[#5C469C]/40 hover:bg-[#5C469C] text-[#D4ADFC] hover:text-white text-xs font-semibold py-2 rounded-xl transition-colors">
+              ✏️ แก้ไข
+            </a>
+            <a routerLink="/writer/create"
+              class="flex-1 text-center bg-[#D4ADFC]/10 hover:bg-[#D4ADFC]/20 text-[#D4ADFC] text-xs font-semibold py-2 rounded-xl transition-colors">
+              ➕ เพิ่มตอน
+            </a>
+            <button class="px-3 bg-[#0C134F]/60 hover:bg-red-500/20 text-[#7B6FA0] hover:text-red-300 text-xs py-2 rounded-xl transition-colors">
+              🗑
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- EMPTY STATE -->
+      <div *ngIf="filteredNovels.length === 0"
+        class="col-span-full flex flex-col items-center justify-center py-20 text-center">
+        <div class="text-6xl mb-4 opacity-40">📝</div>
+        <p class="text-[#7B6FA0] text-sm">ยังไม่มีนิยายในหมวดนี้</p>
+        <a routerLink="/writer/create"
+          class="mt-4 text-sm text-[#D4ADFC] hover:text-[#B085E8] underline transition-colors">
+          สร้างนิยายใหม่ →
+        </a>
+      </div>
+
+    </div>
+  </div>
+
+</div>

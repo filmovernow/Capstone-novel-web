@@ -1,0 +1,181 @@
+<div class="bg-[#0C134F] text-[#D4ADFC] min-h-screen font-sans">
+
+  <!-- NAVBAR -->
+  <nav class="fixed top-0 w-full z-50 bg-[#0C134F]/90 backdrop-blur border-b border-[#1D267D]">
+    <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+      <a routerLink="/" class="flex items-center gap-2 font-semibold text-xl" style="text-decoration:none">
+        <span class="text-2xl">📚</span>
+        <span class="text-white">NovelHub</span>
+      </a>
+      <div class="flex items-center gap-3">
+        <a routerLink="/" class="text-sm text-[#9B8CC4] hover:text-[#D4ADFC] transition-colors" style="text-decoration:none">← หน้าหลัก</a>
+        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#5C469C] to-[#D4ADFC] flex items-center justify-center text-sm font-bold text-[#0C134F]">น</div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="max-w-4xl mx-auto px-6 pt-28 pb-16">
+
+    <!-- HEADER -->
+    <div class="mb-8">
+      <p class="text-[#7B6FA0] text-sm mb-1">จัดการบัญชี</p>
+      <h1 class="text-3xl font-semibold text-white">ตั้งค่าบัญชี ⚙️</h1>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-6">
+
+      <!-- SIDEBAR MENU -->
+      <aside>
+        <div class="bg-[#1D267D]/60 border border-[#5C469C]/30 rounded-2xl overflow-hidden sticky top-24">
+          <button *ngFor="let tab of tabs"
+            (click)="selectedTab = tab.key"
+            [class]="selectedTab === tab.key
+              ? 'w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold text-white bg-[#5C469C]/50 border-l-2 border-[#D4ADFC] transition-all'
+              : 'w-full flex items-center gap-3 px-4 py-3 text-sm text-[#9B8CC4] hover:bg-[#5C469C]/20 hover:text-white border-l-2 border-transparent transition-all'">
+            <span>{{tab.icon}}</span> {{tab.label}}
+          </button>
+        </div>
+      </aside>
+
+      <!-- CONTENT -->
+      <div class="space-y-5">
+
+        <!-- ===== PROFILE ===== -->
+        <div *ngIf="selectedTab === 'profile'" class="space-y-5">
+
+          <!-- AVATAR SECTION -->
+          <div class="bg-[#1D267D]/60 border border-[#5C469C]/30 rounded-2xl p-6">
+            <h2 class="text-white font-semibold mb-5 flex items-center gap-2">
+              <span class="w-1 h-5 bg-[#D4ADFC] rounded-full"></span> รูปโปรไฟล์
+            </h2>
+            <div class="flex items-center gap-5">
+              <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#5C469C] to-[#D4ADFC] flex items-center justify-center text-3xl font-bold text-[#0C134F] shrink-0">
+                {{profile.name ? profile.name[0] : 'น'}}
+              </div>
+              <div>
+                <p class="text-white text-sm font-semibold mb-1">{{profile.name || 'นักอ่านตัวยง'}}</p>
+                <p class="text-[#7B6FA0] text-xs mb-3">{{profile.email || 'user@email.com'}}</p>
+                <button class="text-xs border border-[#5C469C]/50 text-[#D4ADFC] px-4 py-1.5 rounded-full hover:bg-[#5C469C]/30 transition-colors">
+                  เปลี่ยนรูปภาพ
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- PROFILE FORM -->
+          <div class="bg-[#1D267D]/60 border border-[#5C469C]/30 rounded-2xl p-6 space-y-4">
+            <h2 class="text-white font-semibold mb-1 flex items-center gap-2">
+              <span class="w-1 h-5 bg-[#D4ADFC] rounded-full"></span> ข้อมูลส่วนตัว
+            </h2>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div class="space-y-1.5">
+                <label class="text-xs font-semibold text-[#9B8CC4] uppercase tracking-wide">ชื่อผู้ใช้</label>
+                <input [(ngModel)]="profile.name" name="name"
+                  placeholder="ชื่อที่แสดงบนเว็บ"
+                  class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-xl px-4 py-2.5 text-white text-sm placeholder-[#7B6FA0] outline-none focus:border-[#D4ADFC] transition-all" />
+              </div>
+              <div class="space-y-1.5">
+                <label class="text-xs font-semibold text-[#9B8CC4] uppercase tracking-wide">นามปากกา</label>
+                <input [(ngModel)]="profile.penName" name="penName"
+                  placeholder="ชื่อนักเขียนของคุณ"
+                  class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-xl px-4 py-2.5 text-white text-sm placeholder-[#7B6FA0] outline-none focus:border-[#D4ADFC] transition-all" />
+              </div>
+            </div>
+
+            <div class="space-y-1.5">
+              <label class="text-xs font-semibold text-[#9B8CC4] uppercase tracking-wide">อีเมล</label>
+              <input [(ngModel)]="profile.email" name="email" type="email"
+                placeholder="your@email.com"
+                class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-xl px-4 py-2.5 text-white text-sm placeholder-[#7B6FA0] outline-none focus:border-[#D4ADFC] transition-all" />
+            </div>
+
+            <div class="space-y-1.5">
+              <label class="text-xs font-semibold text-[#9B8CC4] uppercase tracking-wide">แนะนำตัว</label>
+              <textarea [(ngModel)]="profile.bio" name="bio" rows="3"
+                placeholder="บอกเล่าเกี่ยวกับตัวเองสั้นๆ..."
+                class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-xl px-4 py-2.5 text-white text-sm placeholder-[#7B6FA0] outline-none focus:border-[#D4ADFC] transition-all resize-none"></textarea>
+            </div>
+
+            <div class="flex justify-end">
+              <button (click)="save()" class="bg-[#D4ADFC] text-[#0C134F] font-bold text-sm px-6 py-2.5 rounded-full hover:bg-[#B085E8] transition-colors">
+                บันทึกการเปลี่ยนแปลง
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== SECURITY ===== -->
+        <div *ngIf="selectedTab === 'security'" class="space-y-5">
+
+          <div class="bg-[#1D267D]/60 border border-[#5C469C]/30 rounded-2xl p-6 space-y-4">
+            <h2 class="text-white font-semibold flex items-center gap-2">
+              <span class="w-1 h-5 bg-[#D4ADFC] rounded-full"></span> เปลี่ยนรหัสผ่าน
+            </h2>
+
+            <div class="space-y-1.5">
+              <label class="text-xs font-semibold text-[#9B8CC4] uppercase tracking-wide">รหัสผ่านปัจจุบัน</label>
+              <div class="relative">
+                <input [(ngModel)]="security.current" name="current"
+                  [type]="showPw ? 'text' : 'password'" placeholder="••••••••"
+                  class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-xl px-4 py-2.5 pr-11 text-white text-sm placeholder-[#7B6FA0] outline-none focus:border-[#D4ADFC] transition-all" />
+                <button type="button" (click)="showPw = !showPw"
+                  class="absolute right-3 top-1/2 -translate-y-1/2 text-[#7B6FA0] hover:text-[#D4ADFC] transition-colors text-sm">
+                  {{showPw ? '🙈' : '👁️'}}
+                </button>
+              </div>
+            </div>
+
+            <div class="space-y-1.5">
+              <label class="text-xs font-semibold text-[#9B8CC4] uppercase tracking-wide">รหัสผ่านใหม่</label>
+              <input [(ngModel)]="security.newPw" name="newPw"
+                [type]="showPw ? 'text' : 'password'" placeholder="••••••••"
+                class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-xl px-4 py-2.5 text-white text-sm placeholder-[#7B6FA0] outline-none focus:border-[#D4ADFC] transition-all" />
+            </div>
+
+            <div class="space-y-1.5">
+              <label class="text-xs font-semibold text-[#9B8CC4] uppercase tracking-wide">ยืนยันรหัสผ่านใหม่</label>
+              <input [(ngModel)]="security.confirm" name="confirm"
+                [type]="showPw ? 'text' : 'password'" placeholder="••••••••"
+                class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-xl px-4 py-2.5 text-white text-sm placeholder-[#7B6FA0] outline-none focus:border-[#D4ADFC] transition-all" />
+            </div>
+
+            <div *ngIf="pwError" class="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-2.5 text-red-300 text-sm">
+              ⚠️ {{pwError}}
+            </div>
+
+            <div class="flex justify-end">
+              <button (click)="changePassword()" class="bg-[#D4ADFC] text-[#0C134F] font-bold text-sm px-6 py-2.5 rounded-full hover:bg-[#B085E8] transition-colors">
+                เปลี่ยนรหัสผ่าน
+              </button>
+            </div>
+          </div>
+
+          <!-- CONNECTED ACCOUNTS -->
+          <div class="bg-[#1D267D]/60 border border-[#5C469C]/30 rounded-2xl p-6">
+            <h2 class="text-white font-semibold mb-4 flex items-center gap-2">
+              <span class="w-1 h-5 bg-[#D4ADFC] rounded-full"></span> บัญชีที่เชื่อมต่อ
+            </h2>
+            <div class="flex items-center justify-between py-3 border-b border-[#5C469C]/20">
+              <div class="flex items-center gap-3">
+                <span class="text-xl">🌐</span>
+                <div>
+                  <p class="text-sm text-white">Google</p>
+                  <p class="text-xs text-[#7B6FA0]">{{profile.email || 'ยังไม่เชื่อมต่อ'}}</p>
+                </div>
+              </div>
+              <span class="text-xs bg-[#72f5c8]/20 text-[#72f5c8] px-3 py-1 rounded-full">เชื่อมต่อแล้ว</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- SAVE TOAST -->
+        <div *ngIf="toast"
+          class="fixed bottom-6 right-6 bg-[#1D267D] border border-[#D4ADFC]/30 text-white text-sm px-5 py-3 rounded-2xl shadow-xl flex items-center gap-2 z-50">
+          ✅ {{toast}}
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>

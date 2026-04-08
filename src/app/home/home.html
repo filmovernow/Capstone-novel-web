@@ -1,0 +1,278 @@
+<div class="bg-[#0C134F] text-[#D4ADFC] min-h-screen font-sans">
+
+  <!-- NAVBAR -->
+  <nav
+    [class]="
+      'fixed top-0 w-full z-50 transition-all duration-300 border-b ' +
+      (scrolled
+        ? 'bg-[#0C134F]/90 backdrop-blur border-[#1D267D] shadow'
+        : 'bg-transparent border-transparent')
+    "
+  >
+    <div class="max-w-7xl mx-auto px-6 h-16 grid items-center gap-4"
+         [class]="scrolled ? 'grid-cols-[auto_1fr_auto]' : 'grid-cols-[auto_auto]'">
+
+      <!-- LOGO -->
+      <a href="#" class="flex items-center gap-2 select-none shrink-0">
+        <span class="text-2xl">📚</span>
+        <span class="font-display text-lg font-semibold text-[#D4ADFC] tracking-tight">NovelHub</span>
+      </a>
+
+      <!-- NAV SEARCH (โผล่เมื่อ scroll ลง) -->
+      <div *ngIf="scrolled" class="relative w-100 mx-auto"
+           style="animation: navSearchFadeIn .25s ease-out both">
+        <style>
+          @keyframes navSearchFadeIn {
+            from { opacity: 0; transform: translateY(-6px); }
+            to   { opacity: 1; transform: translateY(0); }
+          }
+        </style>
+        <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#7B6FA0] text-sm pointer-events-none">🔍</span>
+        <input
+          [(ngModel)]="search"
+          (input)="onSearch()"
+          placeholder="ค้นหานิยาย, ผู้เขียน, แท็ก..."
+          autocomplete="off"
+          class="w-full bg-[#1D267D]/70 border border-[#5C469C]/60 rounded-full pl-9 pr-4 py-2 text-sm text-white placeholder-[#7B6FA0] outline-none focus:border-[#D4ADFC] transition-all duration-200"
+        />
+        <!-- NAVBAR SEARCH DROPDOWN -->
+        <div *ngIf="searchResults.length > 0"
+          class="absolute top-full mt-2 left-0 right-0 bg-[#1D267D] border border-[#5C469C]/60 rounded-2xl overflow-hidden shadow-2xl shadow-black/40 z-50">
+          <div *ngFor="let b of searchResults"
+            class="flex items-center gap-3 px-4 py-3 hover:bg-[#5C469C]/30 cursor-pointer transition-colors border-b border-[#5C469C]/20 last:border-none">
+            <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-[#1D267D] to-[#5C469C] flex items-center justify-center text-lg shrink-0">
+              {{b.icon}}
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-semibold text-white truncate">{{b.title}}</p>
+              <p class="text-xs text-[#9B8CC4]">{{b.author}}</p>
+            </div>
+            <div class="flex gap-1 flex-wrap">
+              <span *ngFor="let t of b.tags" class="text-[10px] bg-[#5C469C]/50 text-[#D4ADFC] px-2 py-0.5 rounded-full">{{t}}</span>
+            </div>
+          </div>
+        </div>
+        <div *ngIf="search && searchResults.length === 0 && searchDone"
+          class="absolute top-full mt-2 left-0 right-0 bg-[#1D267D] border border-[#5C469C]/60 rounded-xl px-5 py-4 text-[#9B8CC4] text-sm z-50">
+          ไม่พบนิยายที่ตรงกับ "{{search}}" 😢
+        </div>
+      </div>
+
+      <!-- PROFILE -->
+      <div class="flex items-center justify-end gap-5 shrink-0">
+        <div class="relative" id="profile-wrapper">
+          <button
+            (click)="toggleProfile()"
+            class="flex items-center gap-2 bg-[#1D267D] hover:bg-[#5C469C]/40 border border-[#5C469C]/60 rounded-full pl-1 pr-3 py-1 transition-all duration-200"
+          >
+            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#5C469C] to-[#D4ADFC] flex items-center justify-center text-sm font-bold text-[#0C134F] select-none">
+              น
+            </div>
+            <span class="text-sm text-[#D4ADFC] hidden sm:block">นักอ่าน</span>
+            <span class="text-[#7B6FA0] text-xs transition-transform duration-200"
+                  [style.transform]="profileOpen ? 'rotate(180deg)' : ''">▾</span>
+          </button>
+
+          <div *ngIf="profileOpen"
+            class="absolute right-0 top-full mt-2 w-56 bg-[#1D267D] border border-[#5C469C]/50 rounded-2xl shadow-2xl shadow-black/50 overflow-hidden animate-fade-in z-50">
+
+            <div class="px-4 py-3 border-b border-[#5C469C]/30 flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#5C469C] to-[#D4ADFC] flex items-center justify-center font-bold text-[#0C134F]">น</div>
+              <div>
+                <p class="text-sm font-semibold text-white">นักอ่านตัวยง</p>
+                <p class="text-xs text-[#7B6FA0]">user&#64;email.com</p>
+              </div>
+            </div>
+
+            <div class="py-1.5">
+              <a routerLink="/writer" class="flex items-center gap-3 px-4 py-2.5 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30 hover:text-white transition-colors" style="text-decoration:none">
+                <span>✍️</span> เขียนนิยาย
+              </a>
+              <a routerLink="/settings" class="flex items-center gap-3 px-4 py-2.5 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30 hover:text-white transition-colors" style="text-decoration:none">
+                <span>⚙️</span> ตั้งค่าบัญชี
+              </a>
+            </div>
+
+            <div class="border-t border-[#5C469C]/30 py-1.5">
+              <a routerLink="/auth" class="flex items-center gap-3 px-4 py-2.5 text-sm text-[#ff9eb5] hover:bg-[#ff6f91]/10 transition-colors" style="text-decoration:none">
+                <span>🚪</span> ออกจากระบบ
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <header class="bg-gradient-to-b from-[#1D267D]/60 to-[#0C134F] pt-28 pb-16 px-6 text-center">
+    <p class="text-[#D4ADFC] text-sm font-semibold tracking-widest uppercase mb-3">โลกของนิยายออนไลน์</p>
+    <h1 class="text-4xl md:text-5xl text-white font-semibold mb-3 leading-tight">
+      อ่านนิยายที่คุณ<span class="text-[#D4ADFC]">หลงรัก</span>
+    </h1>
+    <p class="text-[#9B8CC4] text-base mb-10">ค้นพบโลกใหม่จากนักเขียนกว่า 10,000 คน · อัปเดตทุกวัน</p>
+
+    <!-- SEARCH -->
+    <div class="max-w-2xl mx-auto relative">
+      <span class="absolute left-5 top-1/2 -translate-y-1/2 text-[#9B8CC4] text-lg pointer-events-none">🔍</span>
+      <input
+        [(ngModel)]="search"
+        (input)="onSearch()"
+        (keyup)="onSearch()"
+        placeholder="ค้นหาชื่อนิยาย, ผู้เขียน, หรือ tag…"
+        class="w-full bg-[#1D267D]/70 border-2 border-[#5C469C] rounded-full pl-14 pr-36 py-4 text-white placeholder-[#7B6FA0] text-base outline-none transition-all duration-200 focus:border-[#D4ADFC]"
+      />
+      <button class="absolute right-2 top-1/2 -translate-y-1/2 bg-[#D4ADFC] text-[#0C134F] font-bold text-sm px-5 py-2.5 rounded-full hover:bg-[#B085E8] transition-colors">
+        ค้นหา
+      </button>
+    </div>
+
+    <!-- SEARCH RESULTS DROPDOWN -->
+    <div *ngIf="searchResults.length > 0"
+      class="max-w-2xl mx-auto mt-2 text-left bg-[#1D267D] border border-[#5C469C]/60 rounded-2xl overflow-hidden shadow-xl z-40 relative">
+      <div *ngFor="let b of searchResults"
+        class="flex items-center gap-3 px-4 py-3 hover:bg-[#5C469C]/30 cursor-pointer transition-colors border-b border-[#5C469C]/20 last:border-none">
+        <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-[#1D267D] to-[#5C469C] flex items-center justify-center text-xl shrink-0">
+          {{b.icon}}
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-semibold text-white truncate">{{b.title}}</p>
+          <p class="text-xs text-[#9B8CC4]">{{b.author}}</p>
+        </div>
+        <div class="flex gap-1 flex-wrap">
+          <span *ngFor="let t of b.tags" class="text-[10px] bg-[#5C469C]/50 text-[#D4ADFC] px-2 py-0.5 rounded-full">{{t}}</span>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="search && searchResults.length === 0 && searchDone"
+      class="max-w-2xl mx-auto mt-2 text-left bg-[#1D267D] border border-[#5C469C]/60 rounded-xl px-5 py-4 text-[#9B8CC4] text-sm">
+      ไม่พบนิยายที่ตรงกับ "{{search}}" 😢
+    </div>
+  </header>
+
+  <!-- MAIN CONTENT -->
+  <main class="max-w-7xl mx-auto px-6 py-10 grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-10">
+
+    <div>
+
+      <!-- FEATURED BOOK -->
+      <section class="mb-10">
+        <div class="bg-gradient-to-r from-[#1D267D] to-[#5C469C] rounded-2xl p-6 md:p-8 flex flex-col md:flex-row gap-6 items-start border border-[#5C469C]/50">
+          <div class="text-6xl md:text-7xl shrink-0">🏰</div>
+          <div class="flex-1">
+            <p class="text-[#D4ADFC] text-xs font-bold tracking-widest uppercase mb-2">แนะนำพิเศษวันนี้</p>
+            <h2 class="text-2xl md:text-3xl font-semibold text-white mb-1">ราชันย์แห่งดวงดาว</h2>
+            <p class="text-[#9B8CC4] text-sm mb-3">โดย นักเขียนดาวรุ่ง · อัปเดต 2 ชั่วโมงที่แล้ว</p>
+            <p class="text-[#C8BEE8] text-sm leading-relaxed mb-4">
+              เมื่อเจ้าหญิงผู้ถูกลืมได้พบกับราชันย์ผู้ครองจักรวาล ชะตากรรมของสองโลกจึงพัวพันกันอย่างหลีกเลี่ยงไม่ได้...
+            </p>
+            <div class="flex flex-wrap gap-2 mb-5">
+              <span class="text-xs bg-[#0C134F]/60 border border-[#D4ADFC]/30 text-[#D4ADFC] px-3 py-1 rounded-full">แฟนตาซี</span>
+              <span class="text-xs bg-[#0C134F]/60 border border-[#D4ADFC]/30 text-[#D4ADFC] px-3 py-1 rounded-full">โรแมนติก</span>
+              <span class="text-xs bg-[#0C134F]/60 border border-[#D4ADFC]/30 text-[#D4ADFC] px-3 py-1 rounded-full">ระทึก</span>
+            </div>
+            <div class="flex items-center gap-4">
+              <button class="bg-[#D4ADFC] text-[#0C134F] font-bold text-sm px-6 py-2.5 rounded-full hover:bg-[#B085E8] transition-colors">
+                อ่านเลย →
+              </button>
+              <span class="text-[#9B8CC4] text-sm">⭐ 4.9 · 👁 210K วิว</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CATEGORY TABS -->
+      <div class="flex gap-2 mb-6 flex-wrap">
+        <button *ngFor="let cat of categories"
+          (click)="setCategory(cat)"
+          [class]="selectedCat === cat
+            ? 'bg-[#5C469C] text-white text-sm px-4 py-2 rounded-full transition-colors'
+            : 'border border-[#5C469C] text-[#9B8CC4] text-sm px-4 py-2 rounded-full hover:bg-[#5C469C] hover:text-white transition-colors'">
+          {{cat}}
+        </button>
+      </div>
+
+      <!-- BOOK GRID HEADER -->
+      <div class="flex items-center justify-between mb-5">
+        <h2 class="text-lg font-semibold text-white flex items-center gap-2">
+          <span class="w-1 h-5 bg-[#D4ADFC] rounded-full inline-block"></span>
+          หนังสือแนะนำ
+        </h2>
+        <a href="#" class="text-sm text-[#D4ADFC] hover:text-[#B085E8]">ดูทั้งหมด →</a>
+      </div>
+
+      <!-- BOOK GRID -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+        <div *ngFor="let book of filteredBooks"
+          class="bg-[#1D267D] rounded-xl overflow-hidden border border-[#5C469C]/40 hover:-translate-y-1 hover:border-[#D4ADFC]/40 transition-all duration-200 cursor-pointer">
+
+          <!-- COVER -->
+          <div class="h-44 flex items-center justify-center text-5xl bg-gradient-to-br relative"
+               [ngClass]="book.bg">
+            {{book.icon}}
+            <span *ngIf="book.badge"
+              class="absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full"
+              [ngClass]="book.badgeClass">
+              {{book.badge}}
+            </span>
+          </div>
+
+          <!-- INFO -->
+          <div class="p-3">
+            <p class="font-semibold text-sm text-white mb-1 leading-tight line-clamp-1">{{book.title}}</p>
+            <p class="text-xs text-[#9B8CC4] mb-2">{{book.author}}</p>
+            <div class="flex gap-1 flex-wrap mb-2">
+              <span *ngFor="let t of book.tags"
+                class="text-[10px] bg-[#5C469C]/50 text-[#D4ADFC] px-2 py-0.5 rounded-full">
+                {{t}}
+              </span>
+            </div>
+            <div class="flex justify-between text-xs text-[#7B6FA0]">
+              <span>⭐ {{book.star}}</span>
+              <span>👁 {{book.views}}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- SIDEBAR -->
+    <aside class="space-y-6">
+
+      <!-- TAG FILTER -->
+      <div class="bg-[#1D267D]/60 border border-[#5C469C]/40 rounded-2xl p-5">
+        <h3 class="font-semibold text-white text-base mb-4 flex items-center gap-2">
+          <span class="w-1 h-4 bg-[#D4ADFC] rounded-full"></span>Tag แนะนำ
+        </h3>
+        <div class="flex flex-wrap gap-2">
+          <button *ngFor="let tag of allTags"
+            (click)="filterByTag(tag)"
+            [class]="selectedTag === tag
+              ? 'bg-[#5C469C] text-white text-xs px-3 py-1.5 rounded-full cursor-pointer hover:bg-[#7B62BF] transition-colors'
+              : 'border border-[#D4ADFC]/30 text-[#D4ADFC] text-xs px-3 py-1.5 rounded-full cursor-pointer hover:bg-[#5C469C] hover:text-white transition-colors'">
+            {{tag}}
+          </button>
+        </div>
+      </div>
+
+      <!-- WRITE CTA -->
+      <div class="bg-gradient-to-br from-[#5C469C] to-[#1D267D] border border-[#D4ADFC]/20 rounded-2xl p-5">
+        <p class="font-semibold text-white mb-1 mt-2">อยากเขียนนิยายบ้างไหม?</p>
+        <p class="text-sm text-[#9B8CC4] mb-4">เริ่มต้นได้เลย ฟรี ไม่มีค่าใช้จ่าย</p>
+        <button class="w-full bg-[#D4ADFC] text-[#0C134F] font-bold text-sm py-2.5 rounded-full hover:bg-[#B085E8] transition-colors">
+          เริ่มเขียนเลย →
+        </button>
+      </div>
+
+    </aside>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="border-t border-[#1D267D] mt-10 py-8 text-center text-[#7B6FA0] text-sm">
+    <p>© 2025 NovelHub · Angular + Tailwind CSS</p>
+  </footer>
+
+</div>
