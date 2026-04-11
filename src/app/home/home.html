@@ -60,48 +60,82 @@
 
       <!-- PROFILE -->
       <div class="flex items-center justify-end gap-5 shrink-0">
+        <!-- ❌ ยังไม่ได้ login -->
+      <ng-container *ngIf="!currentUser; else loggedIn">
+        <a routerLink="/auth"
+          class="flex items-center gap-2 text-sm text-[#D4ADFC] hover:text-white transition-colors">
+          🔑 เข้าสู่ระบบ
+        </a>
+      </ng-container>
+
+      <!-- ✅ login แล้ว -->
+      <ng-template #loggedIn>
         <div class="relative" id="profile-wrapper">
-          <button
-            (click)="toggleProfile()"
-            class="flex items-center gap-2 bg-[#1D267D] hover:bg-[#5C469C]/40 border border-[#5C469C]/60 rounded-full pl-1 pr-3 py-1 transition-all duration-200"
-          >
-            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#5C469C] to-[#D4ADFC] flex items-center justify-center text-sm font-bold text-[#0C134F] select-none">
-              น
+          <button (click)="toggleProfile()" class="flex items-center gap-2 ...">
+            <div class="w-8 h-8 rounded-full ... overflow-hidden">
+              <img *ngIf="currentUser?.avatar_path"
+                  [src]="currentUser.avatar_path"
+                  class="w-full h-full object-cover">
+              <span *ngIf="!currentUser?.avatar_path">
+                {{ currentUser?.username?.[0] || 'น' }}
+              </span>
             </div>
-            <span class="text-sm text-[#D4ADFC] hidden sm:block">นักอ่าน</span>
-            <span class="text-[#7B6FA0] text-xs transition-transform duration-200"
-                  [style.transform]="profileOpen ? 'rotate(180deg)' : ''">▾</span>
+            <span class="text-sm ...">
+              {{ currentUser?.username || 'นักอ่าน' }}
+            </span>
+            <span class="text-[#7B6FA0] ...">▾</span>
           </button>
 
           <div *ngIf="profileOpen"
             class="absolute right-0 top-full mt-2 w-56 bg-[#1D267D] border border-[#5C469C]/50 rounded-2xl shadow-2xl shadow-black/50 overflow-hidden animate-fade-in z-50">
 
             <div class="px-4 py-3 border-b border-[#5C469C]/30 flex items-center gap-3">
-              <div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#5C469C] to-[#D4ADFC] flex items-center justify-center font-bold text-[#0C134F]">น</div>
+              <img *ngIf="currentUser?.avatar_path; else fallback"
+                [src]="currentUser.avatar_path"
+                class="w-8 h-8 rounded-full object-cover cursor-pointer"
+                (click)="toggleProfile()" />
+
+            <ng-template #fallback>
+              <div 
+                (click)="toggleProfile()"
+                class="w-8 h-8 rounded-full bg-gradient-to-br from-[#5C469C] to-[#D4ADFC] flex items-center justify-center text-sm font-bold text-[#0C134F] cursor-pointer">
+                {{currentUser?.username ? currentUser.username[0] : 'น'}}
+              </div>
+            </ng-template>
               <div>
-                <p class="text-sm font-semibold text-white">นักอ่านตัวยง</p>
-                <p class="text-xs text-[#7B6FA0]">user&#64;email.com</p>
+                <p class="text-sm font-semibold text-white">
+                  {{ currentUser?.username || 'นักอ่านตัวยง' }}
+                </p>
+                <p class="text-xs text-[#7B6FA0]">
+                  {{ currentUser?.email || 'user@email.com' }}
+                </p>
               </div>
             </div>
 
             <div class="py-1.5">
-              <a routerLink="/writer" class="flex items-center gap-3 px-4 py-2.5 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30 hover:text-white transition-colors" style="text-decoration:none">
+              <a routerLink="/writer"
+                class="flex items-center gap-3 px-4 py-2.5 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30 hover:text-white transition-colors"
+                style="text-decoration:none">
                 <span>✍️</span> เขียนนิยาย
               </a>
-              <a routerLink="/settings" class="flex items-center gap-3 px-4 py-2.5 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30 hover:text-white transition-colors" style="text-decoration:none">
+
+              <a routerLink="/settings"
+                class="flex items-center gap-3 px-4 py-2.5 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30 hover:text-white transition-colors"
+                style="text-decoration:none">
                 <span>⚙️</span> ตั้งค่าบัญชี
               </a>
             </div>
 
             <div class="border-t border-[#5C469C]/30 py-1.5">
-              <a routerLink="/auth" class="flex items-center gap-3 px-4 py-2.5 text-sm text-[#ff9eb5] hover:bg-[#ff6f91]/10 transition-colors" style="text-decoration:none">
+              <button (click)="logout()"
+                class="w-full text-left flex items-center gap-3 px-4 py-2.5 text-sm text-[#ff9eb5] hover:bg-[#ff6f91]/10 transition-colors">
                 <span>🚪</span> ออกจากระบบ
-              </a>
+              </button>
             </div>
           </div>
         </div>
+      </ng-template>
       </div>
-
     </div>
   </nav>
 
@@ -174,7 +208,8 @@
               <span class="text-xs bg-[#0C134F]/60 border border-[#D4ADFC]/30 text-[#D4ADFC] px-3 py-1 rounded-full">ระทึก</span>
             </div>
             <div class="flex items-center gap-4">
-              <button class="bg-[#D4ADFC] text-[#0C134F] font-bold text-sm px-6 py-2.5 rounded-full hover:bg-[#B085E8] transition-colors">
+              <button [routerLink]="['/read', 1]"
+                class="bg-[#D4ADFC] text-[#0C134F] font-bold text-sm px-6 py-2.5 rounded-full hover:bg-[#B085E8] transition-colors">
                 อ่านเลย →
               </button>
               <span class="text-[#9B8CC4] text-sm">⭐ 4.9 · 👁 210K วิว</span>
@@ -205,37 +240,41 @@
 
       <!-- BOOK GRID -->
       <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-        <div *ngFor="let book of filteredBooks"
-          class="bg-[#1D267D] rounded-xl overflow-hidden border border-[#5C469C]/40 hover:-translate-y-1 hover:border-[#D4ADFC]/40 transition-all duration-200 cursor-pointer">
+      <div *ngFor="let book of filteredBooks; let i = index"
+        [routerLink]="['/read', i + 1]"
+        class="bg-[#1D267D] rounded-xl overflow-hidden border border-[#5C469C]/40 hover:-translate-y-1 hover:border-[#D4ADFC]/40 transition-all duration-200 cursor-pointer">
 
-          <!-- COVER -->
-          <div class="h-44 flex items-center justify-center text-5xl bg-gradient-to-br relative"
-               [ngClass]="book.bg">
-            {{book.icon}}
-            <span *ngIf="book.badge"
-              class="absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full"
-              [ngClass]="book.badgeClass">
-              {{book.badge}}
+        <!-- COVER -->
+        <div class="h-44 flex items-center justify-center text-5xl bg-gradient-to-br relative"
+            [ngClass]="book.bg">
+          {{book.icon}}
+          <span *ngIf="book.badge"
+            class="absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full"
+            [ngClass]="book.badgeClass">
+            {{book.badge}}
+          </span>
+        </div>
+
+        <!-- INFO -->
+        <div class="p-3">
+          <p class="font-semibold text-sm text-white mb-1 line-clamp-1">{{book.title}}</p>
+          <p class="text-xs text-[#9B8CC4] mb-2">{{book.author}}</p>
+
+          <div class="flex gap-1 flex-wrap mb-2">
+            <span *ngFor="let t of book.tags"
+              class="text-[10px] bg-[#5C469C]/50 text-[#D4ADFC] px-2 py-0.5 rounded-full">
+              {{t}}
             </span>
           </div>
 
-          <!-- INFO -->
-          <div class="p-3">
-            <p class="font-semibold text-sm text-white mb-1 leading-tight line-clamp-1">{{book.title}}</p>
-            <p class="text-xs text-[#9B8CC4] mb-2">{{book.author}}</p>
-            <div class="flex gap-1 flex-wrap mb-2">
-              <span *ngFor="let t of book.tags"
-                class="text-[10px] bg-[#5C469C]/50 text-[#D4ADFC] px-2 py-0.5 rounded-full">
-                {{t}}
-              </span>
-            </div>
-            <div class="flex justify-between text-xs text-[#7B6FA0]">
-              <span>⭐ {{book.star}}</span>
-              <span>👁 {{book.views}}</span>
-            </div>
+          <div class="flex justify-between text-xs text-[#7B6FA0]">
+            <span>⭐ {{book.star}}</span>
+            <span>👁 {{book.views}}</span>
           </div>
         </div>
+
       </div>
+    </div>
 
     </div>
 

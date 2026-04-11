@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { EditorComponent } from '@tinymce/tinymce-angular';
 
 interface Novel {
   id: number;
@@ -21,7 +22,7 @@ interface Novel {
 @Component({
   selector: 'app-writer',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, EditorComponent],
   templateUrl: './writer.html',
 })
 export class WriterComponent {

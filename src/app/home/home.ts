@@ -1,7 +1,10 @@
-import { Component, HostListener } from '@angular/core';
+import { Component, HostListener, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { RouterLink, Router } from '@angular/router';
+import { UserService } from '../service/user.service'; 
+import { ChangeDetectorRef } from '@angular/core';
+
 interface Book {
   title: string;
   author: string;
@@ -22,7 +25,9 @@ interface Book {
   templateUrl: './home.html',
   styleUrl: './home.css'
 })
-export class Home {
+export class Home implements OnInit {
+
+  currentUser: any = null;
 
   search = '';
   profileOpen = false;
@@ -49,6 +54,35 @@ export class Home {
     { title: 'อุ๊ยตาย! รักซะแล้ว',    author: 'ชนัญ ว.',         icon: '😂', tags: ['ตลก', 'โรแมนติก'],          badge: 'ใหม่', badgeClass: 'bg-[#72f5c8] text-[#0a2e22]', star: '4.6', views: '22K',   genre: 'ตลก',            bg: 'from-[#5C469C] to-[#3a2080]' },
     { title: 'ลมหายใจสุดท้าย',        author: 'สุดา ป.',          icon: '🍃', tags: ['ซึ้ง', 'โรแมนติก'],         badge: '',     badgeClass: '',                             star: '4.8', views: '67K',   genre: 'ซึ้ง',           bg: 'from-[#1D267D] to-[#0C134F]' },
   ];
+
+
+  constructor(
+    private userService: UserService,
+    private router: Router,
+    private cdr: ChangeDetectorRef
+  ) {}
+
+
+  ngOnInit() {
+    this.userService.loadProfile();
+
+
+    this.userService.currentUser$.subscribe({
+      next: (user: any) => {
+        this.currentUser = user;
+        this.cdr.detectChanges();
+      },
+      error: (err: any) => {
+        console.log('ยังไม่ได้เข้าสู่ระบบ หรือ Token หมดอายุ', err);
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  logout() {
+    this.userService.logout();
+    this.router.navigate(['/auth']);
+  }
 
   get filteredBooks(): Book[] {
     if (this.selectedTag) {
@@ -88,7 +122,6 @@ export class Home {
 
   @HostListener('window:scroll', [])
   onScroll() {
-    // navbar search โผล่หลังจาก scroll ผ่าน hero (~300px)
     this.scrolled = window.scrollY > 300;
   }
 
@@ -99,7 +132,7 @@ export class Home {
       this.profileOpen = false;
     }
     if (!target.closest('input') && !target.closest('#search-results')) {
-      // optionally clear search results on outside click
+      
     }
   }
 }
