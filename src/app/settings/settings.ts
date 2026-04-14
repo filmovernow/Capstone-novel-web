@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { UserService } from '../service/user.service';
 import { ChangeDetectorRef } from '@angular/core';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-settings',
@@ -36,14 +37,19 @@ export class SettingsComponent implements OnInit {
     newPw: '',
     confirm: '',
   };
+  currentUser: any = null;
+  profileOpen = false;
 
-  constructor(private userService: UserService, private cdr: ChangeDetectorRef) {}
+
+  constructor(private userService: UserService, private cdr: ChangeDetectorRef, private router: Router) {}
     
   ngOnInit() {
     this.userService.loadProfile();
 
     this.userService.currentUser$.subscribe(user => {
       if (!user) return;
+      
+      this.currentUser = user;
 
       this.profile = {
         name: user.username || '',
@@ -78,6 +84,15 @@ export class SettingsComponent implements OnInit {
       }
     });
     
+  }
+
+  toggleProfile() {
+    this.profileOpen = !this.profileOpen;
+  }
+
+  logout() {
+    localStorage.removeItem('token');
+    this.router.navigate(['/']);
   }
 
   changePassword(event?: Event) {

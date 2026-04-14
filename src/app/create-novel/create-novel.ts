@@ -1,8 +1,10 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectorRef, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { RouterLink, Router } from '@angular/router';
 import { EditorComponent } from '@tinymce/tinymce-angular';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { forkJoin } from 'rxjs';
 
 interface Chapter {
   id: number;
@@ -31,7 +33,7 @@ interface Comment {
   imports: [CommonModule, FormsModule, RouterLink, EditorComponent],
   templateUrl: './create-novel.html',
 })
-export class CreateNovelComponent {
+export class CreateNovelComponent implements OnInit {
   
   novelTitle = '';
   penName = '';
@@ -40,10 +42,17 @@ export class CreateNovelComponent {
   selectedTags: string[] = [];
   selectedCover = '📖';
   coverImageUrl = '';
+  coverBase64 = '';
   saveStatus = '';
   showMonetization = false;
 
-  genres = ['โรแมนติก', 'แฟนตาซี', 'แอ็กชัน', 'ลึกลับ', 'ไซไฟ', 'ซึ้ง', 'ตลก', 'สยองขวัญ', 'วายุ', 'GL'];
+  // 🔥 กำหนด genres ครบ 13 ชนิดไว้ก่อน
+  genres: string[] = [
+    'romance', 'comedy', 'girl love', 'boy love', 
+    'fantasy', 'science', 'fiction', 'mystery', 
+    'war', 'adventure', 'action', 'thriller', 'horror'
+  ];
+  
   coverEmojis = ['📖', '🌸', '⚔️', '🌙', '🏰', '🕵️', '💜', '🤖', '👻', '🍃', '📜', '😂'];
   tagSuggestions = ['รักสามเส้า', 'CEO', 'แม่บ้าน', 'มาเฟีย', 'ย้อนเวลา', 'ชาติหน้า', 'โรงเรียน', 'มหาลัย', 'ตลก', 'น้ำตาซึม'];
   newTag = '';
@@ -51,6 +60,34 @@ export class CreateNovelComponent {
   chapters: Chapter[] = [];
   activeChapter: Chapter | null = null;
   private nextId = 1;
+
+  apiUrl = 'http://localhost:3000/api/v1';
+
+  constructor(
+    private http: HttpClient,
+    private router: Router,
+    private cdr: ChangeDetectorRef
+  ) {}
+
+  ngOnInit() {
+    this.fetchGenres();
+  }
+
+  fetchGenres() {
+    this.http.get<{genres: string[]}>(`${this.apiUrl}/novels/genres`).subscribe({
+      next: (res) => {
+        if (res.genres && res.genres.length > 0) {
+          this.genres = res.genres;
+        }
+        console.log('Genres loaded:', this.genres);
+      },
+      error: (err) => {
+        console.error('Error loading genres from API:', err);
+        // ถ้า API error ก็ใช้ genres ที่ hardcode ไว้แล้ว
+        console.log('Using hardcoded genres:', this.genres);
+      }
+    });
+  }
 
   editorConfig = {
     height: 500,
@@ -71,8 +108,12 @@ export class CreateNovelComponent {
 
   toggleGenre(g: string) {
     const idx = this.selectedGenres.indexOf(g);
-    if (idx > -1) this.selectedGenres.splice(idx, 1);
-    else this.selectedGenres.push(g);
+    if (idx > -1) {
+      this.selectedGenres.splice(idx, 1);
+    } else {
+      this.selectedGenres.push(g);
+    }
+    console.log('Selected genres:', this.selectedGenres);
   }
 
   addTag() {
@@ -99,6 +140,7 @@ export class CreateNovelComponent {
       const reader = new FileReader();
       reader.onload = (e: any) => {
         this.coverImageUrl = e.target.result;
+        this.coverBase64 = e.target.result.split(',')[1];
         this.selectedCover = '';
       };
       reader.readAsDataURL(file);
@@ -107,13 +149,27 @@ export class CreateNovelComponent {
 
   removeCoverImage() {
     this.coverImageUrl = '';
+    this.coverBase64 = '';
     this.selectedCover = '📖';
   }
 
   addChapter() {
+    if (this.chapters.length === 0) {
+      const descChapter: Chapter = {
+        id: this.nextId++,
+        order: 0,
+        title: 'บทนำ',
+        content: this.synopsis || '',
+        published: false,
+        accessType: 'free',
+        comments: [],
+      };
+      this.chapters.push(descChapter);
+    }
+    
     const ch: Chapter = {
       id: this.nextId++,
-      order: this.chapters.length + 1,
+      order: this.chapters.length,
       title: '',
       content: '',
       published: false,
@@ -126,15 +182,14 @@ export class CreateNovelComponent {
 
   selectChapter(ch: Chapter) {
     this.activeChapter = ch;
+    this.cdr.detectChanges();
   }
 
   deleteChapter(index: number, e: MouseEvent) {
     e.stopPropagation();
-    
-    if (confirm('คุณแน่ใจหรือไม่ว่าต้องการลบตอนนี้? (ไม่สามารถกู้คืนได้)')) {
+    if (confirm('คุณแน่ใจหรือไม่ว่าต้องการลบตอนนี้?')) {
       const deleted = this.chapters.splice(index, 1)[0];
-      this.chapters.forEach((c, i) => c.order = i + 1);
-      
+      this.chapters.forEach((c, i) => c.order = i);
       if (this.activeChapter?.id === deleted.id) {
         const nextActive = this.chapters[index] ?? this.chapters[index - 1] ?? null;
         if (nextActive) this.selectChapter(nextActive);
@@ -182,10 +237,66 @@ export class CreateNovelComponent {
       alert('กรุณากรอกชื่อนิยายและนามปากกาก่อนเผยแพร่');
       return;
     }
-    if (this.activeChapter) {
-      this.activeChapter.published = true;
+
+    const token = localStorage.getItem('token');
+    const headers = new HttpHeaders().set('Authorization', `Bearer ${token}`);
+
+    const novelData: any = {
+      novel: {
+        title: this.novelTitle,
+        description: this.synopsis,
+        pen_name: this.penName,
+        genres: this.selectedGenres
+      }
+    };
+
+    if (this.coverBase64) {
+      novelData.cover_content = this.coverBase64;
     }
-    this.saveStatus = '🚀 เผยแพร่แล้ว!';
-    setTimeout(() => this.saveStatus = '', 3000);
+
+    this.saveStatus = '⏳ กำลังบันทึกนิยาย...';
+
+    this.http.post(`${this.apiUrl}/novels`, novelData, { headers }).subscribe({
+      next: (novelRes: any) => {
+        const novelId = novelRes.id;
+        console.log('สร้างนิยายสำเร็จ ID:', novelId);
+        this.saveStatus = '✅ สร้างนิยายสำเร็จ กำลังบันทึกตอน...';
+
+        const chaptersToSave = this.chapters.filter(ch => ch.order > 0 && ch.content && ch.content.trim());
+        
+        if (chaptersToSave.length === 0) {
+          this.saveStatus = '✅ เผยแพร่สำเร็จ! กำลังไปหน้าแรก...';
+          setTimeout(() => this.router.navigate(['/']), 1000);
+          return;
+        }
+
+        const chapterRequests = chaptersToSave.map((ch, index) => {
+          const chapterData = {
+            chapter_no: index + 1,
+            title: ch.title || `ตอนที่ ${index + 1}`,
+            content: ch.content
+          };
+          return this.http.post(`${this.apiUrl}/novels/${novelId}/chapters`, chapterData, { headers });
+        });
+
+        forkJoin(chapterRequests).subscribe({
+          next: (chapterResults: any[]) => {
+            console.log('บันทึกตอนทั้งหมดสำเร็จ:', chapterResults);
+            this.saveStatus = '✅ เผยแพร่สำเร็จ! กำลังไปหน้าแรก...';
+            setTimeout(() => this.router.navigate(['/']), 1000);
+          },
+          error: (chapterErr) => {
+            console.error('Error saving chapters:', chapterErr);
+            this.saveStatus = '⚠️ เผยแพร่นิยายสำเร็จ แต่บางตอนอาจไม่ถูกบันทึก';
+            setTimeout(() => this.router.navigate(['/']), 2000);
+          }
+        });
+      },
+      error: (err) => {
+        console.error('Error creating novel:', err);
+        this.saveStatus = '❌ เผยแพร่ไม่สำเร็จ';
+        alert('เกิดข้อผิดพลาด: ' + (err.error?.error || err.error?.errors?.join(', ') || 'ลองใหม่ทีหลัง'));
+      }
+    });
   }
 }
