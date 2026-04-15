@@ -1,22 +1,51 @@
 <div class="bg-[#0C134F] text-[#D4ADFC] min-h-screen font-sans">
 
   <!-- NAVBAR -->
-  <nav class="fixed top-0 w-full z-50 bg-[#0C134F]/90 backdrop-blur border-b border-[#1D267D]">
+  <nav [class]="'fixed top-0 w-full z-50 transition-all duration-300 border-b ' + (scrolled ? 'bg-[#0C134F]/90 backdrop-blur border-[#1D267D] shadow' : 'bg-transparent border-transparent')">
     <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-      <a routerLink="/" class="flex items-center gap-2 font-semibold text-xl">
-        <span class="text-2xl">📚</span>
-        <span class="text-white">NovelHub</span>
-      </a>
-      <div class="flex items-center gap-3">
-        <a routerLink="/" class="text-sm text-[#9B8CC4] hover:text-[#D4ADFC] transition-colors">หน้าหลัก</a>
-        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#5C469C] to-[#D4ADFC] flex items-center justify-center text-sm font-bold text-[#0C134F]">น</div>
+
+      <div (click)="goHome()" class="flex items-center gap-2 cursor-pointer">
+        <img src="logo.png" class="h-8">
+        <span class="text-[#D4ADFC] font-semibold">NovelHub</span>
+      </div>
+
+      <div class="flex items-center justify-end gap-5 shrink-0">
+        <ng-container *ngIf="!currentUser; else loggedIn">
+          <a routerLink="/auth" class="flex items-center gap-2 text-sm text-[#D4ADFC] hover:text-white transition-colors">🔑 เข้าสู่ระบบ</a>
+        </ng-container>
+
+        <ng-template #loggedIn>
+          <div class="relative" id="profile-wrapper">
+            <button (click)="toggleProfile()" class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-full overflow-hidden bg-[#5C469C] flex items-center justify-center text-white text-sm">
+                <img *ngIf="currentUser?.avatar_path" [src]="currentUser.avatar_path" class="w-full h-full object-cover">
+                <span *ngIf="!currentUser?.avatar_path">{{ currentUser?.username?.[0] || 'น' }}</span>
+              </div>
+              <span class="text-sm text-white">{{ currentUser?.username || 'นักอ่าน' }}</span>
+              <span class="text-[#7B6FA0]">▾</span>
+            </button>
+
+            <div *ngIf="profileOpen" class="absolute right-0 top-full mt-2 w-56 bg-[#1D267D] border border-[#5C469C]/50 rounded-2xl shadow-2xl shadow-black/50 overflow-hidden z-50">
+              <div class="px-4 py-3 border-b border-[#5C469C]/30">
+                <p class="text-sm text-white">{{ currentUser?.username }}</p>
+                <p class="text-xs text-[#7B6FA0]">{{ currentUser?.email }}</p>
+              </div>
+              <div class="py-1.5">
+                <a routerLink="/writer" class="block px-4 py-2 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30">✍️ เขียนนิยาย</a>
+                <a routerLink="/settings" class="block px-4 py-2 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30">⚙️ ตั้งค่า</a>
+              </div>
+              <div class="border-t border-[#5C469C]/30 py-1.5">
+                <button (click)="logout()" class="w-full text-left px-4 py-2 text-sm text-[#ff9eb5] hover:bg-[#ff6f91]/10">🚪 ออกจากระบบ</button>
+              </div>
+            </div>
+          </div>
+        </ng-template>
       </div>
     </div>
   </nav>
 
-  <div class="max-w-7xl mx-auto px-6 pt-28 pb-16">
+  <div class="max-w-7xl mx-auto px-6 pt-24 pb-16">
 
-    <!-- PAGE HEADER -->
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10">
       <div>
         <p class="text-[#7B6FA0] text-sm mb-1">แดชบอร์ดนักเขียน</p>
@@ -28,7 +57,6 @@
       </a>
     </div>
 
-    <!-- STATS ROW -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
       <div *ngFor="let stat of stats"
         class="bg-[#1D267D]/60 border border-[#5C469C]/30 rounded-2xl p-4 flex flex-col gap-1">
@@ -38,7 +66,6 @@
       </div>
     </div>
 
-    <!-- TABS -->
     <div class="flex gap-2 mb-6 flex-wrap">
       <button *ngFor="let tab of tabs"
         (click)="selectedTab = tab.key"
@@ -50,57 +77,47 @@
       </button>
     </div>
 
-    <!-- NOVEL LIST -->
-    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-      <div *ngFor="let novel of filteredNovels"
+    <div *ngIf="loading" class="flex justify-center py-20">
+      <div class="text-[#7B6FA0]">กำลังโหลด...</div>
+    </div>
+
+    <div *ngIf="!loading" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+      <div *ngFor="let novel of filteredNovels; let i = index"
         class="bg-[#1D267D]/60 border border-[#5C469C]/30 rounded-2xl overflow-hidden hover:border-[#D4ADFC]/40 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group">
 
-        <!-- COVER AREA -->
-        <div class="h-32 bg-gradient-to-br relative flex items-end p-4"
-             [ngClass]="novel.bg">
-          <span class="absolute top-3 right-3 text-3xl opacity-60 group-hover:opacity-100 transition-opacity">{{novel.icon}}</span>
-          <span class="text-[10px] font-bold px-2.5 py-1 rounded-full" [ngClass]="novel.statusClass">
-            {{novel.statusLabel}}
+        <div class="h-32 bg-gradient-to-br relative flex items-end p-4" [class]="getBgClass(i)">
+          <img *ngIf="novel.cover_path" [src]="novel.cover_path" class="absolute inset-0 w-full h-full object-cover opacity-40">
+          <span class="absolute top-3 right-3 text-3xl opacity-60 group-hover:opacity-100 transition-opacity">📖</span>
+          <span class="text-[10px] font-bold px-2.5 py-1 rounded-full z-10" [ngClass]="getStatusClass(novel.status)">
+            {{getStatusLabel(novel.status)}}
           </span>
         </div>
 
-        <!-- INFO -->
         <div class="p-4">
           <h3 class="text-white font-semibold text-sm mb-1 line-clamp-1">{{novel.title}}</h3>
-          <p class="text-[#7B6FA0] text-xs mb-3 line-clamp-2">{{novel.desc}}</p>
+          <p class="text-[#7B6FA0] text-xs mb-3 line-clamp-2">{{novel.description}}</p>
 
           <div class="flex gap-1 flex-wrap mb-3">
-            <span *ngFor="let t of novel.tags"
-              class="text-[10px] bg-[#5C469C]/40 text-[#D4ADFC] px-2 py-0.5 rounded-full">{{t}}</span>
-          </div>
-
-          <div *ngIf="novel.status === 'writing'" class="mb-3">
-            <div class="flex justify-between text-[10px] text-[#7B6FA0] mb-1">
-              <span>ความคืบหน้า</span>
-              <span>{{novel.progress}}%</span>
-            </div>
-            <div class="w-full bg-[#0C134F] rounded-full h-1.5">
-              <div class="bg-gradient-to-r from-[#5C469C] to-[#D4ADFC] h-1.5 rounded-full transition-all duration-500"
-                   [style.width]="novel.progress + '%'"></div>
-            </div>
+            <span *ngFor="let g of novel.genres"
+              class="text-[10px] bg-[#5C469C]/40 text-[#D4ADFC] px-2 py-0.5 rounded-full">{{g.name}}</span>
           </div>
 
           <div class="flex justify-between text-xs text-[#7B6FA0] mb-4">
-            <span>📖 {{novel.chapters}} ตอน</span>
-            <span>👁 {{novel.views}}</span>
-            <span>❤️ {{novel.likes}}</span>
+            <span>📖 {{novel.chapters_count}} ตอน</span>
+            <span>👁 {{novel.views || 0}}</span>
+            <span>❤️ {{novel.likes || 0}}</span>
           </div>
 
           <div class="flex gap-2">
-            <a routerLink="/writer/create"
+            <button (click)="editNovel(novel.id)"
               class="flex-1 text-center bg-[#5C469C]/40 hover:bg-[#5C469C] text-[#D4ADFC] hover:text-white text-xs font-semibold py-2 rounded-xl transition-colors">
               ✏️ แก้ไข
-            </a>
-            <a routerLink="/writer/create"
+            </button>
+            <button (click)="addChapter(novel.id)"
               class="flex-1 text-center bg-[#D4ADFC]/10 hover:bg-[#D4ADFC]/20 text-[#D4ADFC] text-xs font-semibold py-2 rounded-xl transition-colors">
               ➕ เพิ่มตอน
-            </a>
-            <button class="px-3 bg-[#0C134F]/60 hover:bg-red-500/20 text-[#7B6FA0] hover:text-red-300 text-xs py-2 rounded-xl transition-colors">
+            </button>
+            <button (click)="deleteNovel(novel.id)" class="px-3 bg-[#0C134F]/60 hover:bg-red-500/20 text-[#7B6FA0] hover:text-red-300 text-xs py-2 rounded-xl transition-colors">
               🗑
             </button>
           </div>
@@ -108,7 +125,6 @@
 
       </div>
 
-      <!-- EMPTY STATE -->
       <div *ngIf="filteredNovels.length === 0"
         class="col-span-full flex flex-col items-center justify-center py-20 text-center">
         <div class="text-6xl mb-4 opacity-40">📝</div>
@@ -120,23 +136,7 @@
       </div>
 
     </div>
-    <div class="mt-12 bg-[#1D267D]/60 border border-[#5C469C]/30 rounded-2xl p-6 shadow-lg">
-      <h2 class="text-xl font-semibold text-white mb-4">พื้นที่เขียนตอนใหม่ 📝</h2>
-      <editor
-        apiKey="nefysckp0t6ow7fcnj43r4f8qb8n7yx16xy8qbsravd4qpoq"
-        [init]="{
-          height: 500,
-          menubar: false,
-          plugins: [
-            'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
-            'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
-            'insertdatetime', 'media', 'table', 'code', 'help', 'wordcount'
-          ],
-          toolbar: 'undo redo | blocks | bold italic forecolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | removeformat | help',
-          content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:16px; background-color: #f8fafc; color: #333; }'
-        }"
-      ></editor>
-    </div>
+    
   </div>
 
 </div>

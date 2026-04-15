@@ -1,16 +1,20 @@
-import { Component, ChangeDetectorRef } from '@angular/core';
+import { Component, ChangeDetectorRef, OnInit, ElementRef, ViewChild, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
-import { UserService } from '../service/user.service'; 
+import { UserService } from '../service/user.service';
+import { GoogleAuthService } from '../service/google-auth.service';
+
 @Component({
   selector: 'app-auth',
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './auth.html',
 })
-export class AuthComponent {
+export class AuthComponent implements OnInit, AfterViewInit {
+  @ViewChild('googleButton') googleButtonRef!: ElementRef;
+  
   isLogin = true;
   showPassword = false;
   loading = false;
@@ -24,11 +28,21 @@ export class AuthComponent {
   };
 
   constructor(
-    private router: Router, 
+    private router: Router,
     private http: HttpClient,
     private cdr: ChangeDetectorRef,
-    private userService: UserService
+    private userService: UserService,
+    private googleAuth: GoogleAuthService
   ) {}
+
+  ngOnInit() {}
+
+  ngAfterViewInit() {
+    // init Google button after view loads
+    if (this.googleButtonRef) {
+      this.googleAuth.initGoogleSignIn(this.googleButtonRef.nativeElement);
+    }
+  }
 
   setMode(login: boolean) {
     this.isLogin = login;
@@ -37,6 +51,7 @@ export class AuthComponent {
   }
 
   onSubmit() {
+    // ... โค้ด onSubmit เหมือนเดิม
     this.errorMsg = '';
 
     if (!this.form.email || !this.form.password) {
@@ -65,13 +80,11 @@ export class AuthComponent {
     this.cdr.detectChanges();
 
     if (this.isLogin) {
-      // LOGIN
       this.http.post('http://localhost:3000/api/v1/user/sign-in', {
         identifier: this.form.email.toLowerCase(),
         password: this.form.password
       }).subscribe({
         next: (res: any) => {
-          //แปลงเป็น Bearer Token และเซฟลง localStorage
           const bearerToken = `Bearer ${res.token}`;
           localStorage.setItem('token', bearerToken);
           this.userService.loadProfile();
@@ -85,9 +98,7 @@ export class AuthComponent {
           this.cdr.detectChanges();
         }
       });
-
     } else {
-      // SIGN UP
       this.http.post('http://localhost:3000/api/v1/user/sign-up', {
         user: {
           email: this.form.email,
@@ -98,39 +109,31 @@ export class AuthComponent {
       }).subscribe({
         next: (res: any) => {
           this.loading = false;
-
           if (res.token) {
-            //แปลงเป็น Bearer Token และเซฟลง localStorage
             const bearerToken = `Bearer ${res.token}`;
             localStorage.setItem('token', bearerToken);
-            
             this.router.navigate(['/']);
           } else {
-            this.errorMsg = res.message || 'สมัครสมาชิกไม่สำเร็จ อีเมลอาจถูกใช้งานแล้ว';
+            this.errorMsg = res.message || 'สมัครสมาชิกไม่สำเร็จ';
           }
           this.cdr.detectChanges();
         },
         error: (err) => {
           this.loading = false;
           console.log(err);
-
           const errorMap: any = {
             'Email has already been taken': 'อีเมลนี้ถูกใช้งานแล้ว',
             'Username has already been taken': 'ชื่อผู้ใช้นี้ถูกใช้แล้ว'
           };
-
           try {
             if (Array.isArray(err.error?.errors)) {
-              this.errorMsg = err.error.errors
-                .map((e: string) => errorMap[e] || e)
-                .join(', ');
+              this.errorMsg = err.error.errors.map((e: string) => errorMap[e] || e).join(', ');
             } else {
               this.errorMsg = err.error?.message || 'Signup failed';
             }
           } catch (e) {
             this.errorMsg = 'เกิดข้อผิดพลาด หรืออีเมลนี้ถูกใช้งานแล้ว';
           }
-
           this.cdr.detectChanges();
         }
       });
