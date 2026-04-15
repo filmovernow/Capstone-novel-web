@@ -112,11 +112,10 @@ export class CreateNovelComponent implements OnInit {
                 this.chapters = [];
                 this.nextId = 1;
                 
-                // ✅ โหลดตอนที่มีอยู่แล้ว
                 if (chapters && chapters.length > 0) {
                   chapters.forEach((ch) => {
                     const chapter: Chapter = {
-                      id: this.nextId++,
+                      id: ch.id,  // ✅ เก็บ id จริงจาก DB
                       order: ch.chapter_no,
                       title: ch.title || `ตอนที่ ${ch.chapter_no}`,
                       content: ch.content || '',
@@ -128,28 +127,19 @@ export class CreateNovelComponent implements OnInit {
                   });
                 }
                 
-                console.log('📋 All chapters loaded:', this.chapters.length);
-                console.log('📋 Chapters:', this.chapters.map(c => ({ order: c.order, title: c.title })));
-                
+                console.log('📋 Chapters loaded:', this.chapters);
                 this.cdr.detectChanges();
                 
-                // ✅ เลือกตอนแรก
                 if (this.chapters.length > 0) {
                   this.activeChapter = this.chapters[0];
-                  console.log('✅ Selected chapter:', this.activeChapter.order);
                 } else {
-                  // ✅ ถ้าไม่มีตอน ให้สร้างตอนเปล่าไว้ 1 ตอน
                   this.addChapter();
                 }
                 this.cdr.detectChanges();
               },
               error: (err) => {
                 console.error('Error loading chapters:', err);
-                this.chapters = [];
-                this.activeChapter = null;
-                // ✅ ถ้า error ให้สร้างตอนเปล่าไว้ 1 ตอน
                 this.addChapter();
-                this.cdr.detectChanges();
               }
             });
         },
@@ -376,7 +366,6 @@ export class CreateNovelComponent implements OnInit {
     const token = localStorage.getItem('token');
     const headers = new HttpHeaders().set('Authorization', `Bearer ${token}`);
     
-    // ✅ บันทึกเฉพาะตอนที่มี content (order 1,2,3...)
     const chaptersToSave = this.chapters.filter(ch => ch.content && ch.content.trim());
     
     if (chaptersToSave.length === 0) {
@@ -384,33 +373,54 @@ export class CreateNovelComponent implements OnInit {
       return;
     }
 
-    const chapterRequests = chaptersToSave.map((ch, index) => {
-      const chapterData = {
-        chapter_no: index + 1,
-        title: ch.title || `ตอนที่ ${index + 1}`,
-        content: ch.content
-      };
-      return this.http.post(`${this.apiUrl}/novels/${novelId}/chapters`, chapterData, { headers });
-    });
-
-    forkJoin(chapterRequests).subscribe({
-      next: () => {
-        this.saveStatus = '✅ เผยแพร่สำเร็จ!';
-        setTimeout(() => {
-          this.router.navigate(['/writer']).then(() => {
-            window.location.reload();
+    // ดึงตอนที่มีอยู่จริง
+    this.http.get<any[]>(`${this.apiUrl}/novels/${novelId}/chapters`, { headers })
+      .subscribe({
+        next: (existingChapters) => {
+          const existingMap = new Map();
+          existingChapters.forEach(ch => {
+            existingMap.set(ch.chapter_no, ch);
           });
-        }, 1000);
-      },
-      error: (err) => {
-        console.error('Error saving chapters:', err);
-        this.saveStatus = '⚠️ บันทึกนิยายสำเร็จ แต่บางตอนอาจไม่ถูกบันทึก';
-        setTimeout(() => {
-          this.router.navigate(['/writer']).then(() => {
-            window.location.reload();
+          
+          const requests: any[] = [];
+          
+          chaptersToSave.forEach((ch, index) => {
+            const chapterNo = index + 1;
+            const chapterData = {
+              title: ch.title || `ตอนที่ ${chapterNo}`,
+              content: ch.content
+            };
+            
+            if (existingMap.has(chapterNo)) {
+              // ✅ อัปเดตเฉพาะตอนที่มีอยู่แล้ว
+              requests.push(
+                this.http.patch(`${this.apiUrl}/novels/${novelId}/chapters/${chapterNo}`, chapterData, { headers })
+              );
+            } else {
+              // ✅ สร้างตอนใหม่ (เฉพาะตอนที่ยังไม่มี)
+              requests.push(
+                this.http.post(`${this.apiUrl}/novels/${novelId}/chapters`, {
+                  chapter_no: chapterNo,
+                  ...chapterData
+                }, { headers })
+              );
+            }
           });
-        }, 2000);
-      }
-    });
+          
+          forkJoin(requests).subscribe({
+            next: () => {
+              this.saveStatus = '✅ เผยแพร่สำเร็จ!';
+              setTimeout(() => {
+                this.router.navigate(['/writer']).then(() => window.location.reload());
+              }, 1000);
+            },
+            error: (err) => {
+              console.error('Error saving chapters:', err);
+              this.saveStatus = '⚠️ บันทึกไม่สำเร็จ';
+            }
+          });
+        },
+        error: (err) => console.error('Error fetching existing chapters:', err)
+      });
   }
 }
