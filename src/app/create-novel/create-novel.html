@@ -12,6 +12,18 @@
         </span>
       </div>
       <div class="flex items-center gap-3">
+        <!-- แสดงสถานะปัจจุบัน -->
+        <span class="text-xs px-2 py-1 rounded-full" 
+              [ngClass]="{
+                'bg-yellow-500/20 text-yellow-300': currentStatus === 'writing',
+                'bg-blue-500/20 text-blue-300': currentStatus === 'draft',
+                'bg-green-500/20 text-green-300': currentStatus === 'published'
+              }">
+          <span *ngIf="currentStatus === 'writing'">✏️ กำลังเขียน</span>
+          <span *ngIf="currentStatus === 'draft'">📝 แบบร่าง</span>
+          <span *ngIf="currentStatus === 'published'">🌟 เผยแพร่แล้ว</span>
+        </span>
+        
         <span class="text-xs text-[#7B6FA0]">{{ saveStatus }}</span>
         <button (click)="saveDraft()"
           class="border border-[#5C469C] text-[#D4ADFC] text-sm px-4 py-1.5 rounded-full hover:bg-[#5C469C]/30 transition-colors">

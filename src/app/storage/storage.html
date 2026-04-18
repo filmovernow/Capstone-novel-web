@@ -1,0 +1,117 @@
+<div class="bg-[#0C134F] text-[#D4ADFC] min-h-screen font-sans">
+
+  <!-- NAVBAR -->
+  <nav [class]="'fixed top-0 w-full z-50 transition-all duration-300 border-b ' + (scrolled ? 'bg-[#0C134F]/90 backdrop-blur border-[#1D267D] shadow' : 'bg-transparent border-transparent')">
+    <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+      <div (click)="goHome()" class="flex items-center gap-2 cursor-pointer">
+        <img src="logo.png" class="h-8">
+        <span class="text-[#D4ADFC] font-semibold">NovelHub</span>
+      </div>
+      <div class="flex items-center justify-end gap-5 shrink-0">
+        <ng-container *ngIf="!currentUser; else loggedIn">
+          <a routerLink="/auth" class="flex items-center gap-2 text-sm text-[#D4ADFC] hover:text-white transition-colors">🔑 เข้าสู่ระบบ</a>
+        </ng-container>
+        <ng-template #loggedIn>
+          <div class="relative" id="profile-wrapper">
+            <button (click)="toggleProfile()" class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-full overflow-hidden bg-[#5C469C] flex items-center justify-center text-white text-sm">
+                <img *ngIf="currentUser?.avatar_path" [src]="currentUser.avatar_path" class="w-full h-full object-cover">
+                <span *ngIf="!currentUser?.avatar_path">{{ currentUser?.username?.[0] || 'น' }}</span>
+              </div>
+              <span class="text-sm text-white">{{ currentUser?.username || 'นักอ่าน' }}</span>
+              <span class="text-[#7B6FA0]">▾</span>
+            </button>
+            <div *ngIf="profileOpen" class="absolute right-0 top-full mt-2 w-56 bg-[#1D267D] border border-[#5C469C]/50 rounded-2xl shadow-2xl shadow-black/50 overflow-hidden z-50">
+              <div class="px-4 py-3 border-b border-[#5C469C]/30">
+                <p class="text-sm text-white">{{ currentUser?.username }}</p>
+                <p class="text-xs text-[#7B6FA0]">{{ currentUser?.email }}</p>
+              </div>
+              <div class="py-1.5">
+                <a routerLink="/writer" class="block px-4 py-2 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30">✍️ เขียนนิยาย</a>
+                <a routerLink="/storage" class="block px-4 py-2 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30">📦 คลังของฉัน</a>
+                <a routerLink="/settings" class="block px-4 py-2 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30">⚙️ ตั้งค่า</a>
+              </div>
+              <div class="border-t border-[#5C469C]/30 py-1.5">
+                <button (click)="logout()" class="w-full text-left px-4 py-2 text-sm text-[#ff9eb5] hover:bg-[#ff6f91]/10">🚪 ออกจากระบบ</button>
+              </div>
+            </div>
+          </div>
+        </ng-template>
+      </div>
+    </div>
+  </nav>
+
+  <div class="max-w-7xl mx-auto px-6 pt-24 pb-16">
+
+    <div class="mb-10">
+      <p class="text-[#7B6FA0] text-sm mb-1">คลังของฉัน</p>
+      <h1 class="text-3xl font-semibold text-white">📦 คลังเก็บนิยาย</h1>
+    </div>
+
+    <!-- TABS -->
+    <div class="flex gap-2 mb-8 flex-wrap border-b border-[#5C469C]/30 pb-4">
+      <button *ngFor="let tab of tabs"
+        (click)="selectedTab = tab.key"
+        [class]="selectedTab === tab.key
+          ? 'flex items-center gap-2 bg-[#5C469C] text-white text-sm px-5 py-2 rounded-full transition-colors'
+          : 'flex items-center gap-2 text-[#9B8CC4] text-sm px-5 py-2 rounded-full hover:bg-[#5C469C]/30 hover:text-white transition-colors'">
+        {{tab.icon}} {{tab.label}}
+        <span class="text-[10px] bg-[#0C134F]/60 px-2 py-0.5 rounded-full">{{tab.count}}</span>
+      </button>
+    </div>
+
+    <!-- LOADING -->
+    <div *ngIf="loading" class="flex justify-center py-20">
+      <div class="text-[#7B6FA0]">กำลังโหลด...</div>
+    </div>
+
+    <!-- BOOK GRID -->
+    <div *ngIf="!loading" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
+      <div *ngFor="let item of filteredItems" 
+           [routerLink]="['/read', item.novelId]"
+           class="bg-[#1D267D]/60 border border-[#5C469C]/30 rounded-2xl overflow-hidden hover:border-[#D4ADFC]/40 hover:-translate-y-1 transition-all duration-200 cursor-pointer group">
+
+        <div class="relative h-40 bg-gradient-to-br from-[#1D267D] to-[#5C469C] flex items-center justify-center">
+          <img *ngIf="item.cover_path" [src]="item.cover_path" class="w-full h-full object-cover">
+          <span *ngIf="!item.cover_path" class="text-5xl opacity-60">📖</span>
+          <div class="absolute bottom-2 right-2 text-[10px] bg-black/50 px-2 py-0.5 rounded-full">
+            {{item.lastRead ? (item.lastRead | date:'dd/MM/yy') : ''}}
+          </div>
+        </div>
+
+        <div class="p-3">
+          <h3 class="text-white font-semibold text-sm mb-1 line-clamp-1">{{item.title}}</h3>
+          <p class="text-[#7B6FA0] text-xs mb-2">{{item.pen_name}}</p>
+          
+          <div class="flex flex-wrap gap-1 mb-2">
+            <span *ngFor="let g of item.genres | slice:0:2" 
+                  class="text-[9px] bg-[#5C469C]/40 text-[#D4ADFC] px-2 py-0.5 rounded-full">{{g.name}}</span>
+            <span *ngIf="item.genres && item.genres.length > 2" class="text-[8px] text-[#7B6FA0]">+{{item.genres.length - 2}}</span>
+          </div>
+
+          <div class="flex justify-between text-[10px] text-[#7B6FA0]">
+            <span *ngIf="selectedTab === 'recent'">📖 ตอนที่ {{item.lastChapter}}</span>
+            <span *ngIf="selectedTab === 'follow'">🔔 ติดตามแล้ว</span>
+            <span *ngIf="selectedTab === 'liked'">❤️ {{item.likedAt | date:'dd/MM/yy'}}</span>
+            <span *ngIf="selectedTab === 'purchased'">💰 ซื้อถาวร</span>
+            <span *ngIf="selectedTab === 'recent' && item.progress">📊 {{item.progress}}%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- EMPTY STATE -->
+      <div *ngIf="filteredItems.length === 0" class="col-span-full flex flex-col items-center justify-center py-20 text-center">
+        <div class="text-6xl mb-4 opacity-40">📭</div>
+        <p class="text-[#7B6FA0] text-sm">ยังไม่มีรายการในหมวดนี้</p>
+        <a routerLink="/" class="mt-4 text-sm text-[#D4ADFC] hover:text-[#B085E8] underline transition-colors">ไปเลือกนิยายกัน →</a>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="border-t border-[#1D267D] mt-10 py-8 text-center text-[#7B6FA0] text-sm">
+    <p>© 2025 NovelHub · Angular + Tailwind CSS</p>
+  </footer>
+
+</div>

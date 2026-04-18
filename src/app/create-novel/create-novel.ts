@@ -1,4 +1,4 @@
-import { Component, ChangeDetectorRef, OnInit } from '@angular/core';
+import { Component, ChangeDetectorRef, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink, Router, ActivatedRoute } from '@angular/router';
@@ -33,7 +33,7 @@ interface Comment {
   imports: [CommonModule, FormsModule, RouterLink, EditorComponent],
   templateUrl: './create-novel.html',
 })
-export class CreateNovelComponent implements OnInit {
+export class CreateNovelComponent implements OnInit, OnDestroy {
   
   novelTitle = '';
   penName = '';
@@ -45,6 +45,7 @@ export class CreateNovelComponent implements OnInit {
   coverBase64 = '';
   saveStatus = '';
   showMonetization = false;
+  currentStatus: 'draft' | 'writing' | 'published' = 'writing';
 
   genres: string[] = [
     'romance', 'comedy', 'girl love', 'boy love', 
@@ -59,6 +60,8 @@ export class CreateNovelComponent implements OnInit {
   chapters: Chapter[] = [];
   activeChapter: Chapter | null = null;
   private nextId = 1;
+  private autoSaveTimer: any = null;
+  private isSaving = false;
 
   apiUrl = 'http://localhost:3000/api/v1';
   
@@ -74,6 +77,7 @@ export class CreateNovelComponent implements OnInit {
 
   ngOnInit() {
     this.fetchGenres();
+    this.startAutoSave();
     
     this.route.queryParams.subscribe(params => {
       if (params['novelId']) {
@@ -93,6 +97,39 @@ export class CreateNovelComponent implements OnInit {
     });
   }
 
+  ngOnDestroy() {
+    if (this.autoSaveTimer) {
+      clearInterval(this.autoSaveTimer);
+    }
+  }
+
+  startAutoSave() {
+    this.autoSaveTimer = setInterval(() => {
+      if (this.hasUnsavedChanges() && !this.isSaving) {
+        this.autoSave();
+      }
+    }, 10000);
+  }
+
+  hasUnsavedChanges(): boolean {
+    return !!this.novelTitle || !!this.synopsis || 
+           this.chapters.some(ch => ch.content && ch.content.trim());
+  }
+
+  autoSave() {
+    if (!this.novelTitle && !this.synopsis && this.chapters.length === 0) {
+      return;
+    }
+
+    console.log('🔄 Auto-saving... (status: writing)');
+    
+    if (this.isEditMode && this.novelId) {
+      this.updateNovel('writing');
+    } else if (this.novelTitle || this.synopsis || this.chapters.length > 0) {
+      this.createNovel('writing');
+    }
+  }
+
   loadNovelData() {
     this.http.get<any>(`${this.apiUrl}/novels/${this.novelId}`)
       .subscribe({
@@ -101,6 +138,7 @@ export class CreateNovelComponent implements OnInit {
           this.penName = novel.pen_name;
           this.synopsis = novel.description;
           this.selectedGenres = novel.genres?.map((g: any) => g.name) || [];
+          this.currentStatus = novel.status || 'writing';
           if (novel.cover_path) {
             this.coverImageUrl = novel.cover_path;
           }
@@ -115,7 +153,7 @@ export class CreateNovelComponent implements OnInit {
                 if (chapters && chapters.length > 0) {
                   chapters.forEach((ch) => {
                     const chapter: Chapter = {
-                      id: ch.id,  // ✅ เก็บ id จริงจาก DB
+                      id: ch.id,
                       order: ch.chapter_no,
                       title: ch.title || `ตอนที่ ${ch.chapter_no}`,
                       content: ch.content || '',
@@ -220,7 +258,7 @@ export class CreateNovelComponent implements OnInit {
   }
 
   addChapter() {
-    const newOrder = this.chapters.length + 1;  // เริ่มที่ 1
+    const newOrder = this.chapters.length + 1;
     
     const ch: Chapter = {
       id: this.nextId++,
@@ -283,8 +321,11 @@ export class CreateNovelComponent implements OnInit {
   }
 
   saveDraft() {
-    this.saveStatus = '✓ บันทึกร่างแล้ว';
-    setTimeout(() => this.saveStatus = '', 2000);
+    if (this.isEditMode && this.novelId) {
+      this.updateNovel('draft', true);  // ✅ ส่ง参数 true ว่าให้กลับหน้า writer
+    } else {
+      this.createNovel('draft', true);  // ✅ ส่ง参数 true ว่าให้กลับหน้า writer
+    }
   }
 
   publish() {
@@ -294,13 +335,14 @@ export class CreateNovelComponent implements OnInit {
     }
 
     if (this.isEditMode && this.novelId) {
-      this.updateNovel();
+      this.updateNovel('published', true);  // ✅ เผยแพร่ก็กลับหน้า writer
     } else {
-      this.createNovel();
+      this.createNovel('published', true);  // ✅ เผยแพร่ก็กลับหน้า writer
     }
   }
 
-  createNovel() {
+  createNovel(status: 'draft' | 'writing' | 'published', shouldRedirect: boolean = false) {
+    this.isSaving = true;
     const token = localStorage.getItem('token');
     const headers = new HttpHeaders().set('Authorization', `Bearer ${token}`);
 
@@ -309,7 +351,8 @@ export class CreateNovelComponent implements OnInit {
         title: this.novelTitle,
         description: this.synopsis,
         pen_name: this.penName,
-        genres: this.selectedGenres
+        genres: this.selectedGenres,
+        status: status
       }
     };
 
@@ -317,22 +360,28 @@ export class CreateNovelComponent implements OnInit {
       novelData.cover_content = this.coverBase64;
     }
 
-    this.saveStatus = '⏳ กำลังบันทึกนิยาย...';
+    const statusText = status === 'published' ? 'เผยแพร่' : (status === 'draft' ? 'บันทึกร่าง' : 'บันทึกอัตโนมัติ');
+    this.saveStatus = `⏳ กำลัง${statusText}...`;
 
     this.http.post(`${this.apiUrl}/novels`, novelData, { headers }).subscribe({
       next: (novelRes: any) => {
         const novelId = novelRes.id;
-        this.saveChapters(novelId);
+        this.novelId = novelId;
+        this.isEditMode = true;
+        this.currentStatus = status;
+        this.saveChapters(novelId, status, shouldRedirect);  // ✅ ส่ง shouldRedirect ต่อ
       },
       error: (err) => {
         console.error('Error creating novel:', err);
-        this.saveStatus = '❌ เผยแพร่ไม่สำเร็จ';
+        this.saveStatus = '❌ ไม่สำเร็จ';
+        this.isSaving = false;
         alert('เกิดข้อผิดพลาด: ' + (err.error?.error || 'ลองใหม่ทีหลัง'));
       }
     });
   }
 
-  updateNovel() {
+  updateNovel(status: 'draft' | 'writing' | 'published', shouldRedirect: boolean = false) {
+    this.isSaving = true;
     const token = localStorage.getItem('token');
     const headers = new HttpHeaders().set('Authorization', `Bearer ${token}`);
 
@@ -340,7 +389,8 @@ export class CreateNovelComponent implements OnInit {
       novel: {
         title: this.novelTitle,
         description: this.synopsis,
-        genres: this.selectedGenres
+        genres: this.selectedGenres,
+        status: status
       }
     };
 
@@ -348,32 +398,59 @@ export class CreateNovelComponent implements OnInit {
       novelData.cover_content = this.coverBase64;
     }
 
-    this.saveStatus = '⏳ กำลังอัปเดตนิยาย...';
+    const statusText = status === 'published' ? 'เผยแพร่' : (status === 'draft' ? 'บันทึกร่าง' : 'บันทึกอัตโนมัติ');
+    this.saveStatus = `⏳ กำลัง${statusText}...`;
 
     this.http.patch(`${this.apiUrl}/novels/${this.novelId}`, novelData, { headers }).subscribe({
       next: () => {
-        this.saveStatus = '✅ อัปเดตนิยายสำเร็จ!';
-        this.saveChapters(this.novelId!);
+        this.currentStatus = status;
+        this.saveStatus = `✅ ${statusText}สำเร็จ!`;
+        
+        // ✅ ถ้าควร redirect และเป็น draft หรือ published ให้กลับหน้า writer
+        if (shouldRedirect && (status === 'draft' || status === 'published')) {
+          setTimeout(() => {
+            this.router.navigate(['/writer']);
+          }, 500);
+        } else if (status === 'published') {
+          // เผยแพร่แต่ไม่ redirect? (กันไว้)
+          setTimeout(() => {
+            this.router.navigate(['/writer']);
+          }, 1000);
+        } else {
+          setTimeout(() => this.saveStatus = '', 2000);
+        }
+        
+        if (this.novelId) {
+          this.saveChapters(this.novelId!, status, shouldRedirect);
+        } else {
+          this.isSaving = false;
+        }
       },
       error: (err) => {
         console.error('Error updating novel:', err);
-        this.saveStatus = '❌ อัปเดตไม่สำเร็จ';
+        this.saveStatus = '❌ ไม่สำเร็จ';
+        this.isSaving = false;
       }
     });
   }
 
-  saveChapters(novelId: number) {
+  saveChapters(novelId: number, novelStatus: 'draft' | 'writing' | 'published', shouldRedirect: boolean = false) {
     const token = localStorage.getItem('token');
     const headers = new HttpHeaders().set('Authorization', `Bearer ${token}`);
     
     const chaptersToSave = this.chapters.filter(ch => ch.content && ch.content.trim());
     
     if (chaptersToSave.length === 0) {
-      this.router.navigate(['/writer']);
+      this.isSaving = false;
+      // ✅ ถ้าควร redirect ให้กลับหน้า writer
+      if (shouldRedirect && (novelStatus === 'draft' || novelStatus === 'published')) {
+        this.router.navigate(['/writer']);
+      } else if (novelStatus === 'published') {
+        this.router.navigate(['/writer']);
+      }
       return;
     }
 
-    // ดึงตอนที่มีอยู่จริง
     this.http.get<any[]>(`${this.apiUrl}/novels/${novelId}/chapters`, { headers })
       .subscribe({
         next: (existingChapters) => {
@@ -392,12 +469,10 @@ export class CreateNovelComponent implements OnInit {
             };
             
             if (existingMap.has(chapterNo)) {
-              // ✅ อัปเดตเฉพาะตอนที่มีอยู่แล้ว
               requests.push(
                 this.http.patch(`${this.apiUrl}/novels/${novelId}/chapters/${chapterNo}`, chapterData, { headers })
               );
             } else {
-              // ✅ สร้างตอนใหม่ (เฉพาะตอนที่ยังไม่มี)
               requests.push(
                 this.http.post(`${this.apiUrl}/novels/${novelId}/chapters`, {
                   chapter_no: chapterNo,
@@ -409,18 +484,28 @@ export class CreateNovelComponent implements OnInit {
           
           forkJoin(requests).subscribe({
             next: () => {
-              this.saveStatus = '✅ เผยแพร่สำเร็จ!';
-              setTimeout(() => {
-                this.router.navigate(['/writer']).then(() => window.location.reload());
-              }, 1000);
+              this.isSaving = false;
+              // ✅ ถ้าควร redirect ให้กลับหน้า writer
+              if (shouldRedirect && (novelStatus === 'draft' || novelStatus === 'published')) {
+                this.router.navigate(['/writer']);
+              } else if (novelStatus === 'published') {
+                this.router.navigate(['/writer']);
+              } else {
+                this.saveStatus = '✅ บันทึกสำเร็จ';
+                setTimeout(() => this.saveStatus = '', 2000);
+              }
             },
             error: (err) => {
               console.error('Error saving chapters:', err);
               this.saveStatus = '⚠️ บันทึกไม่สำเร็จ';
+              this.isSaving = false;
             }
           });
         },
-        error: (err) => console.error('Error fetching existing chapters:', err)
+        error: (err) => {
+          console.error('Error fetching existing chapters:', err);
+          this.isSaving = false;
+        }
       });
   }
 }

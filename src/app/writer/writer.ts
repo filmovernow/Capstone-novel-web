@@ -11,7 +11,7 @@ interface Novel {
   description: string;
   pen_name: string;
   cover_path: string | null;
-  status: 'writing' | 'published' | 'draft';
+  status: 'draft' | 'published' | 'writing';
   chapters_count: number;
   views: number;
   likes: number;
@@ -86,6 +86,7 @@ export class WriterComponent implements OnInit {
   fetchMyNovels() {
     const token = localStorage.getItem('token');
     if (!token) {
+      console.log('No token found, redirecting to auth...');
       this.router.navigate(['/auth']);
       return;
     }
@@ -119,6 +120,13 @@ export class WriterComponent implements OnInit {
         error: (err) => {
           console.error('Error fetching novels:', err);
           this.loading = false;
+          
+          // ✅ ถ้า error 401 (unauthorized) ให้ logout และ redirect
+          if (err.status === 401) {
+            console.log('Token expired or invalid, logging out...');
+            localStorage.removeItem('token');
+            this.router.navigate(['/auth']);
+          }
           this.cdr.detectChanges();
         }
       });

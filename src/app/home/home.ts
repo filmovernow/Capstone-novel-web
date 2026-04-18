@@ -1,3 +1,4 @@
+// home.ts
 import { Component, HostListener, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -5,7 +6,8 @@ import { RouterLink, Router } from '@angular/router';
 import { UserService } from '../service/user.service'; 
 import { ChangeDetectorRef } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { forkJoin } from 'rxjs';
+import { NumberPipe } from './number.pipe';
+
 interface Novel {
   id: number;
   title: string;
@@ -15,12 +17,14 @@ interface Novel {
   genres: any[];
   tags?: any[];
   updated_at?: string;
+  view_count?: number;
+  status?: 'draft' | 'published' | 'writing';
 }
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, NumberPipe],
   templateUrl: './home.html',
   styleUrl: './home.css'
 })
@@ -59,26 +63,26 @@ export class Home implements OnInit {
     this.userService.currentUser$.subscribe({
       next: (user: any) => {
         this.currentUser = user;
-        console.log('Current user:', this.currentUser);
         this.cdr.detectChanges();
       },
-      error: (err: any) => {
-        console.log('ยังไม่ได้เข้าสู่ระบบ หรือ Token หมดอายุ', err);
+      error: () => {
+        this.currentUser = null;
         this.cdr.detectChanges();
       }
     });
     
+    this.http.get<{genres: string[]}>(`${this.apiUrl}/novels/genres`).subscribe({
+      next: (res) => {
+        this.allGenres = res.genres;
+      },
+      error: (err) => console.error('Error loading genres:', err)
+    });
+    
     this.http.get<any[]>(`${this.apiUrl}/novels`).subscribe({
       next: (novels) => {
-        const requests = novels.map(novel => 
-          this.http.get(`${this.apiUrl}/novels/${novel.id}`)
-        );
-        
-        forkJoin(requests).subscribe((fullNovels: any[]) => {
-          this.books = fullNovels;
-          console.log('Books with genres:', this.books[0]?.genres);
-          this.cdr.detectChanges();
-        });
+        this.books = novels.filter(novel => novel.status === 'published');
+        console.log('Books loaded:', this.books);
+        this.cdr.detectChanges();
       },
       error: (err) => console.error('Error:', err)
     });
@@ -91,7 +95,7 @@ export class Home implements OnInit {
 
   get filteredBooks() {
     let result = [...this.books];
-    
+
     if (this.selectedGenre) {
       result = result.filter(book => 
         book.genres?.some((g: any) => 

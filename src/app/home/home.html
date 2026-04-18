@@ -23,7 +23,7 @@
         
         <!-- NAVBAR SEARCH DROPDOWN -->
         <div *ngIf="searchResults.length > 0" class="absolute top-full mt-2 left-0 right-0 bg-[#1D267D] border border-[#5C469C]/60 rounded-2xl overflow-hidden shadow-2xl shadow-black/40 z-50">
-          <div *ngFor="let b of searchResults" class="flex items-center gap-3 px-4 py-3 hover:bg-[#5C469C]/30 cursor-pointer transition-colors border-b border-[#5C469C]/20 last:border-none">
+          <div *ngFor="let b of searchResults" [routerLink]="['/read', b.id]" class="flex items-center gap-3 px-4 py-3 hover:bg-[#5C469C]/30 cursor-pointer transition-colors border-b border-[#5C469C]/20 last:border-none">
             <img *ngIf="b.cover_path" [src]="b.cover_path" class="w-9 h-9 rounded-lg object-cover" />
             <div *ngIf="!b.cover_path" class="w-9 h-9 rounded-lg bg-[#1D267D] flex items-center justify-center text-xs text-[#9B8CC4]">no img</div>
             <div class="flex-1 min-w-0">
@@ -31,7 +31,8 @@
               <p class="text-xs text-[#9B8CC4]">{{b.pen_name}}</p>
             </div>
             <div class="flex gap-1 flex-wrap">
-              <span *ngFor="let g of b.genres" class="text-[10px] bg-[#5C469C]/50 text-[#D4ADFC] px-2 py-0.5 rounded-full">{{g.name}}</span>
+              <span *ngFor="let g of b.genres | slice:0:3" class="text-[10px] bg-[#5C469C]/50 text-[#D4ADFC] px-2 py-0.5 rounded-full">{{g.name}}</span>
+              <span *ngIf="b.genres && b.genres.length > 3" class="text-[10px] text-[#7B6FA0] px-1">+{{b.genres.length - 3}}</span>
             </div>
           </div>
         </div>
@@ -68,6 +69,7 @@
               </div>
               <div class="py-1.5">
                 <a routerLink="/writer" class="flex items-center gap-3 px-4 py-2.5 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30 hover:text-white transition-colors" style="text-decoration:none"><span>✍️</span> เขียนนิยาย</a>
+                <a routerLink="/storage" class="flex items-center gap-3 px-4 py-2.5 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30 hover:text-white transition-colors" style="text-decoration:none"><span>📦</span> คลังของฉัน</a>
                 <a routerLink="/settings" class="flex items-center gap-3 px-4 py-2.5 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30 hover:text-white transition-colors" style="text-decoration:none"><span>⚙️</span> ตั้งค่าบัญชี</a>
               </div>
               <div class="border-t border-[#5C469C]/30 py-1.5">
@@ -95,7 +97,7 @@
 
     <!-- SEARCH RESULTS DROPDOWN -->
     <div *ngIf="searchResults.length > 0" class="max-w-2xl mx-auto mt-2 text-left bg-[#1D267D] border border-[#5C469C]/60 rounded-2xl overflow-hidden shadow-xl z-40 relative">
-      <div *ngFor="let b of searchResults" class="flex items-center gap-3 px-4 py-3 hover:bg-[#5C469C]/30 cursor-pointer transition-colors border-b border-[#5C469C]/20 last:border-none">
+      <div *ngFor="let b of searchResults" [routerLink]="['/read', b.id]" class="flex items-center gap-3 px-4 py-3 hover:bg-[#5C469C]/30 cursor-pointer transition-colors border-b border-[#5C469C]/20 last:border-none">
         <img *ngIf="b.cover_path" [src]="b.cover_path" class="w-10 h-10 rounded-lg object-cover" />
         <div *ngIf="!b.cover_path" class="w-10 h-10 rounded-lg bg-[#1D267D] flex items-center justify-center text-xs text-[#9B8CC4]">no img</div>
         <div class="flex-1 min-w-0">
@@ -103,7 +105,9 @@
           <p class="text-xs text-[#9B8CC4]">{{b.pen_name}}</p>
         </div>
         <div class="flex gap-1 flex-wrap">
-          <span *ngFor="let g of b.genres" class="text-[10px] bg-[#5C469C]/50 text-[#D4ADFC] px-2 py-0.5 rounded-full">{{g.name}}</span>
+          <!-- ✅ แสดงแค่ 3 แท็กแรก -->
+          <span *ngFor="let g of b.genres | slice:0:3" class="text-[10px] bg-[#5C469C]/50 text-[#D4ADFC] px-2 py-0.5 rounded-full">{{g.name}}</span>
+          <span *ngIf="b.genres && b.genres.length > 3" class="text-[10px] text-[#7B6FA0] px-1">+{{b.genres.length - 3}}</span>
         </div>
       </div>
     </div>
@@ -151,27 +155,24 @@
       <!-- BOOK GRID -->
       <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
         <div *ngFor="let book of filteredBooks" [routerLink]="['/read', book.id]" class="bg-[#1D267D] rounded-2xl overflow-hidden border border-[#5C469C]/30 hover:-translate-y-2 hover:shadow-xl hover:shadow-[#000]/40 hover:border-[#D4ADFC]/50 transition-all duration-300 cursor-pointer group">
-          <!-- COVER -->
           <div class="relative overflow-hidden">
             <img *ngIf="book.cover_path" [src]="book.cover_path" class="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-500" />
             <div *ngIf="!book.cover_path" class="w-full h-48 bg-[#0C134F] flex items-center justify-center text-sm text-[#9B8CC4]">📖 ไม่มีรูปปก</div>
             <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-70"></div>
+            
+            <!-- ✅ เพิ่ม badge แสดงยอดวิวตรงมุม -->
+            <div class="absolute bottom-2 right-2 bg-black/60 backdrop-blur rounded-full px-2 py-0.5 text-xs text-white flex items-center gap-1">
+              <span>👁️</span> {{book.view_count || 0 | number}}
+            </div>
           </div>
-          <!-- CONTENT -->
           <div class="p-4">
             <p class="font-semibold text-white text-sm mb-1 line-clamp-1">{{book.title}}</p>
             <p class="text-xs text-[#9B8CC4] mb-3">{{book.pen_name}}</p>
-          <!-- GENRES -->
-<div class="flex flex-wrap gap-1 mb-1">
-  <span *ngFor="let g of book.genres" 
-    class="text-[10px] bg-[#5C469C]/50 text-[#D4ADFC] px-2 py-0.5 rounded-full">
-    {{g.name}}
-  </span>
-  <span *ngIf="!book.genres || book.genres.length === 0" class="text-[10px] text-[#7B6FA0]">
-    ไม่มีแนว
-  </span>
-</div>
-            <!-- TAGS (อนาคต) -->
+            <div class="flex flex-wrap gap-1 mb-1">
+              <span *ngFor="let g of book.genres | slice:0:3" class="text-[10px] bg-[#5C469C]/50 text-[#D4ADFC] px-2 py-0.5 rounded-full">{{g.name}}</span>
+              <span *ngIf="book.genres && book.genres.length > 3" class="text-[10px] text-[#7B6FA0] px-1">+{{book.genres.length - 3}}</span>
+              <span *ngIf="!book.genres || book.genres.length === 0" class="text-[10px] text-[#7B6FA0]">ไม่มีแนว</span>
+            </div>
             <div class="flex flex-wrap gap-1" *ngIf="book.tags?.length">
               <span *ngFor="let t of book.tags" class="text-[9px] bg-[#0C134F]/60 text-[#9B8CC4] px-2 py-0.5 rounded-full border border-[#5C469C]/30">#{{t.name}}</span>
             </div>
@@ -179,17 +180,20 @@
         </div>
       </div>
 
-    </div>  
+    </div>
 
     <!-- SIDEBAR -->
     <aside class="space-y-6">
-      <!-- TAG FILTER -->
+      <!-- GENRES FILTER -->
       <div class="bg-[#1D267D]/60 border border-[#5C469C]/40 rounded-2xl p-5">
-        <h3 class="font-semibold text-white text-base mb-4 flex items-center gap-2"><span class="w-1 h-4 bg-[#D4ADFC] rounded-full"></span>Tag แนะนำ</h3>
+        <h3 class="font-semibold text-white text-base mb-4 flex items-center gap-2">
+          <span class="w-1 h-4 bg-[#D4ADFC] rounded-full"></span>แนวที่ชอบ
+        </h3>
         <div class="flex flex-wrap gap-2">
-          <button *ngFor="let tag of allTags" (click)="filterByTag(tag)" [class]="selectedTag === tag ? 'bg-[#5C469C] text-white text-xs px-3 py-1.5 rounded-full cursor-pointer hover:bg-[#7B62BF] transition-colors' : 'border border-[#D4ADFC]/30 text-[#D4ADFC] text-xs px-3 py-1.5 rounded-full cursor-pointer hover:bg-[#5C469C] hover:text-white transition-colors'">{{tag}}</button>
+          <button *ngFor="let genre of allGenres" (click)="filterByGenre(genre)" [class]="selectedGenre === genre ? 'bg-[#5C469C] text-white text-xs px-3 py-1.5 rounded-full cursor-pointer transition-colors' : 'border border-[#D4ADFC]/30 text-[#D4ADFC] text-xs px-3 py-1.5 rounded-full cursor-pointer hover:bg-[#5C469C] hover:text-white transition-colors'">{{genre}}</button>
         </div>
       </div>
+
       <!-- WRITE CTA -->
       <div class="bg-gradient-to-br from-[#5C469C] to-[#1D267D] border border-[#D4ADFC]/20 rounded-2xl p-5">
         <p class="font-semibold text-white mb-1 mt-2">อยากเขียนนิยายบ้างไหม?</p>

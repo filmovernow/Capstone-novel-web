@@ -5,7 +5,7 @@ import { WriterComponent } from './writer/writer';
 import { CreateNovelComponent } from './create-novel/create-novel';
 import { SettingsComponent } from './settings/settings';
 import { NovelReaderComponent } from './read-novel/novel-reader';
-
+import { StorageComponent } from './storage/storage';
 export const routes: Routes = [
   { path: '', component: Home },
   { path: 'auth', component: AuthComponent },
@@ -14,5 +14,6 @@ export const routes: Routes = [
   { path: 'writer/edit/:id', component: CreateNovelComponent },
   { path: 'settings', component: SettingsComponent },
   { path: 'read/:id', component: NovelReaderComponent },
+  { path: 'storage', component: StorageComponent },
   { path: '**', redirectTo: '' },
 ];
