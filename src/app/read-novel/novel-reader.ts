@@ -159,7 +159,6 @@ export class NovelReaderComponent implements OnInit, OnDestroy {
   }
 
   showToast(message: string) {
-    // สร้าง element toast ชั่วคราว
     const toast = document.createElement('div');
     toast.innerText = message;
     toast.style.position = 'fixed';

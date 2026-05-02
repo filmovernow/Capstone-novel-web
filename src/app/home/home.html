@@ -38,24 +38,45 @@
   <main class="max-w-7xl mx-auto px-6 py-10 grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-10">
 
     <div>
-
       <!-- FEATURED BOOK -->
-      <section class="mb-10">
+      <section *ngIf="featuredNovel" class="mb-10">
         <div class="bg-gradient-to-r from-[#1D267D] to-[#5C469C] rounded-2xl p-6 md:p-8 flex flex-col md:flex-row gap-6 items-start border border-[#5C469C]/50">
-          <div class="text-6xl md:text-7xl shrink-0">🏰</div>
+          
+          <!-- รูปปก (ถ้ามี) -->
+          <div class="shrink-0">
+            <img *ngIf="featuredNovel.cover_path" [src]="featuredNovel.cover_path" class="w-24 h-32 md:w-32 md:h-40 rounded-lg object-cover shadow-lg" />
+            <div *ngIf="!featuredNovel.cover_path" class="w-24 h-32 md:w-32 md:h-40 rounded-lg bg-gradient-to-br from-[#5C469C] to-[#1D267D] flex items-center justify-center text-5xl">
+              📖
+            </div>
+          </div>
+          
           <div class="flex-1">
             <p class="text-[#D4ADFC] text-xs font-bold tracking-widest uppercase mb-2">แนะนำพิเศษวันนี้</p>
-            <h2 class="text-2xl md:text-3xl font-semibold text-white mb-1">ราชันย์แห่งดวงดาว</h2>
-            <p class="text-[#9B8CC4] text-sm mb-3">โดย นักเขียนดาวรุ่ง · อัปเดต 2 ชั่วโมงที่แล้ว</p>
-            <p class="text-[#C8BEE8] text-sm leading-relaxed mb-4">เมื่อเจ้าหญิงผู้ถูกลืมได้พบกับราชันย์ผู้ครองจักรวาล ชะตากรรมของสองโลกจึงพัวพันกันอย่างหลีกเลี่ยงไม่ได้...</p>
+            <h2 class="text-2xl md:text-3xl font-semibold text-white mb-1">{{ featuredNovel.title }}</h2>
+            <p class="text-[#9B8CC4] text-sm mb-3">
+              โดย {{ featuredNovel.pen_name }} · 
+              อัปเดต {{ featuredNovel.updated_at | date:'dd MMM yyyy' }}
+            </p>
+            <p class="text-[#C8BEE8] text-sm leading-relaxed mb-4 line-clamp-3">{{ featuredNovel.description }}</p>
+            
+            <!-- แท็ก genres -->
             <div class="flex flex-wrap gap-2 mb-5">
-              <span class="text-xs bg-[#0C134F]/60 border border-[#D4ADFC]/30 text-[#D4ADFC] px-3 py-1 rounded-full">แฟนตาซี</span>
-              <span class="text-xs bg-[#0C134F]/60 border border-[#D4ADFC]/30 text-[#D4ADFC] px-3 py-1 rounded-full">โรแมนติก</span>
-              <span class="text-xs bg-[#0C134F]/60 border border-[#D4ADFC]/30 text-[#D4ADFC] px-3 py-1 rounded-full">ระทึก</span>
+              <span *ngFor="let genre of featuredNovel.genres" 
+                    class="text-xs bg-[#0C134F]/60 border border-[#D4ADFC]/30 text-[#D4ADFC] px-3 py-1 rounded-full">
+                {{ genre.name }}
+              </span>
             </div>
-            <div class="flex items-center gap-4">
-              <button [routerLink]="['/read', 1]" class="bg-[#D4ADFC] text-[#0C134F] font-bold text-sm px-6 py-2.5 rounded-full hover:bg-[#B085E8] transition-colors">อ่านเลย →</button>
-              <span class="text-[#9B8CC4] text-sm">⭐ 4.9 · 👁 210K วิว</span>
+            
+            <div class="flex items-center gap-4 flex-wrap">
+              <button [routerLink]="['/read', featuredNovel.id]" 
+                      class="bg-[#D4ADFC] text-[#0C134F] font-bold text-sm px-6 py-2.5 rounded-full hover:bg-[#B085E8] transition-colors">
+                อ่านเลย →
+              </button>
+              <span class="text-[#9B8CC4] text-sm flex items-center gap-2">
+                <span class="flex items-center gap-1">❤️ {{ formatNumber(featuredNovel.like_count || 0) }}</span>
+                <span class="w-1 h-1 rounded-full bg-[#5C469C]"></span>
+                <span class="flex items-center gap-1">👁 {{ formatNumber(featuredNovel.view_count || 0) }}</span>
+              </span>
             </div>
           </div>
         </div>
@@ -118,7 +139,7 @@
       <div class="bg-gradient-to-br from-[#5C469C] to-[#1D267D] border border-[#D4ADFC]/20 rounded-2xl p-5">
         <p class="font-semibold text-white mb-1 mt-2">อยากเขียนนิยายบ้างไหม?</p>
         <p class="text-sm text-[#9B8CC4] mb-4">เริ่มต้นได้เลย ฟรี ไม่มีค่าใช้จ่าย</p>
-        <button class="w-full bg-[#D4ADFC] text-[#0C134F] font-bold text-sm py-2.5 rounded-full hover:bg-[#B085E8] transition-colors">เริ่มเขียนเลย →</button>
+        <button (click)="goToWriter()" class="w-full bg-[#D4ADFC] text-[#0C134F] font-bold text-sm py-2.5 rounded-full hover:bg-[#B085E8] transition-colors cursor-pointer">เริ่มเขียนเลย →</button>
       </div>
     </aside>
 

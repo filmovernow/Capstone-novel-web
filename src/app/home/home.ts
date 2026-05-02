@@ -7,7 +7,7 @@ import { UserService } from '../service/user.service';
 import { ChangeDetectorRef } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { NumberPipe } from './number.pipe';
-import { NavbarComponent } from '../components/navbar/navbar'; // ✅ เพิ่ม import NavbarComponent
+import { NavbarComponent } from '../components/navbar/navbar';
 
 interface Novel {
   id: number;
@@ -19,13 +19,15 @@ interface Novel {
   tags?: any[];
   updated_at?: string;
   view_count?: number;
+  like_count?: number;  // ✅ เพิ่มตรงนี้
   status?: 'draft' | 'published' | 'writing';
+  rating?: number;
 }
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, NumberPipe, NavbarComponent], // ✅ เพิ่ม NavbarComponent ใน imports
+  imports: [CommonModule, FormsModule, RouterLink, NumberPipe, NavbarComponent],
   templateUrl: './home.html',
 })
 export class Home implements OnInit {
@@ -48,6 +50,7 @@ export class Home implements OnInit {
   allTags: string[] = ['แฟนตาซี', 'วายุ', 'โรแมนติก', 'แอ็กชัน', 'ลึกลับ', 'ซึ้ง', 'GL', 'ไซไฟ', 'ตลก', 'สยองขวัญ'];
 
   books: Novel[] = [];
+  featuredNovel: Novel | null = null;
   apiUrl = 'http://localhost:3000/api/v1';
 
   constructor(
@@ -63,9 +66,7 @@ export class Home implements OnInit {
     this.userService.currentUser$.subscribe(user => {
       if (!user) return;
       
-      // ✅ แก้ตรงนี้: เพิ่ม timestamp ให้ avatar_path
       if (user.avatar_path) {
-        // ถ้ายังไม่มี timestamp ให้เพิ่ม
         if (!user.avatar_path.includes('?t=')) {
           user.avatar_path = `${user.avatar_path}?t=${Date.now()}`;
         }
@@ -86,16 +87,54 @@ export class Home implements OnInit {
       next: (novels) => {
         this.books = novels.filter(novel => novel.status === 'published');
         console.log('Books loaded:', this.books);
+        this.loadFeaturedNovel();
         this.cdr.detectChanges();
       },
       error: (err) => console.error('Error:', err)
     });
   }
 
-  // ✅ เพิ่ม method นี้ สำหรับรับค่าค้นหาจาก navbar
+  loadFeaturedNovel() {
+    const publishedNovels = this.books.filter(novel => novel.status === 'published');
+    
+    if (publishedNovels.length > 0) {
+      const randomIndex = Math.floor(Math.random() * publishedNovels.length);
+      this.featuredNovel = publishedNovels[randomIndex];
+    } else {
+      this.setFallbackFeatured();
+    }
+    this.cdr.detectChanges();
+  }
+
+  setFallbackFeatured() {
+    this.featuredNovel = {
+      id: 1,
+      title: 'ราชันย์แห่งดวงดาว',
+      pen_name: 'นักเขียนดาวรุ่ง',
+      description: 'เมื่อเจ้าหญิงผู้ถูกลืมได้พบกับราชันย์ผู้ครองจักรวาล ชะตากรรมของสองโลกจึงพัวพันกันอย่างหลีกเลี่ยงไม่ได้...',
+      cover_path: null,
+      view_count: 210000,
+      like_count: 15234,
+      updated_at: new Date().toISOString(),
+      genres: [{ name: 'แฟนตาซี' }, { name: 'โรแมนติก' }, { name: 'ระทึก' }],
+      status: 'published',
+      rating: 4.9
+    };
+  }
+
+  formatNumber(value: number): string {
+    if (value >= 1000000) return (value / 1000000).toFixed(1) + 'M';
+    if (value >= 1000) return (value / 1000).toFixed(1) + 'K';
+    return value.toString();
+  }
+
   onNavbarSearch(searchTerm: string) {
     this.search = searchTerm;
     this.onSearch();
+  }
+
+  goToWriter() {
+    this.router.navigate(['/writer']);
   }
   
   logout() {
@@ -106,7 +145,6 @@ export class Home implements OnInit {
   get filteredBooks() {
     let result = [...this.books];
 
-    // ✅ เพิ่ม logic ค้นหาจาก search term
     if (this.search && this.search.trim()) {
       const q = this.search.trim().toLowerCase();
       result = result.filter(b =>
@@ -181,6 +219,8 @@ export class Home implements OnInit {
     ).slice(0, 5);
     this.searchDone = true;
   }
+
+  
 
   @HostListener('window:scroll', [])
   onScroll() {
