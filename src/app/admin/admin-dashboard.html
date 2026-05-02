@@ -1,0 +1,253 @@
+<!-- src/app/admin/admin-dashboard.component.html -->
+<div class="min-h-screen bg-[#0C134F] text-[#D4ADFC] font-sans">
+  
+  <!-- Header -->
+  <div class="sticky top-0 z-50 bg-[#0C134F]/90 backdrop-blur border-b border-[#1D267D] px-6 py-3">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-4">
+        <button (click)="goBack()" class="text-[#7B6FA0] hover:text-[#D4ADFC] transition-colors text-sm">
+          ← กลับ
+        </button>
+        <h1 class="text-xl font-bold text-white">📊 Admin Dashboard</h1>
+      </div>
+      <div class="text-sm text-[#7B6FA0]">
+        สวัสดี, <span class="text-[#D4ADFC]">{{ currentUser?.username }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="border-b border-[#1D267D] px-6">
+    <div class="flex gap-1 overflow-x-auto">
+      <button (click)="changeTab('users')" 
+              [class]="activeTab === 'users' ? 'bg-[#5C469C] text-white' : 'text-[#7B6FA0] hover:text-[#D4ADFC]'"
+              class="px-5 py-3 text-sm font-medium transition-colors rounded-t-lg">
+        👥 จัดการผู้ใช้
+      </button>
+      <button (click)="changeTab('novels')" 
+              [class]="activeTab === 'novels' ? 'bg-[#5C469C] text-white' : 'text-[#7B6FA0] hover:text-[#D4ADFC]'"
+              class="px-5 py-3 text-sm font-medium transition-colors rounded-t-lg">
+        📚 จัดการนิยาย
+      </button>
+      <button (click)="changeTab('withdrawals')" 
+              [class]="activeTab === 'withdrawals' ? 'bg-[#5C469C] text-white' : 'text-[#7B6FA0] hover:text-[#D4ADFC]'"
+              class="px-5 py-3 text-sm font-medium transition-colors rounded-t-lg">
+        💰 คำขอถอนเงิน
+      </button>
+    </div>
+  </div>
+
+  <!-- ======================= TAB 1: จัดการผู้ใช้ ======================= -->
+  <div *ngIf="activeTab === 'users'" class="p-6">
+    <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+      <h2 class="text-lg font-semibold text-white">รายชื่อผู้ใช้ทั้งหมด ({{ totalUsers }} คน)</h2>
+      <button (click)="loadUsers()" class="text-xs text-[#D4ADFC] hover:text-[#B085E8] transition-colors">
+        🔄 รีเฟรช
+      </button>
+    </div>
+
+    <!-- Loading -->
+    <div *ngIf="loading" class="text-center py-10 text-[#7B6FA0]">
+      <div class="animate-pulse">กำลังโหลดข้อมูล...</div>
+    </div>
+
+    <!-- Users Table -->
+    <div *ngIf="!loading && users.length > 0" class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="border-b border-[#5C469C]/30">
+          <tr class="text-left text-[#7B6FA0]">
+            <th class="pb-3 px-2">ID</th>
+            <th class="pb-3 px-2">ชื่อผู้ใช้</th>
+            <th class="pb-3 px-2">อีเมล</th>
+            <th class="pb-3 px-2">เหรียญ</th>
+            <th class="pb-3 px-2">บทบาท</th>
+            <th class="pb-3 px-2">สถานะ</th>
+            <th class="pb-3 px-2">วันที่สมัคร</th>
+            <th class="pb-3 px-2">จัดการ</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let user of users" class="border-b border-[#5C469C]/20 hover:bg-[#5C469C]/10 transition-colors">
+            <!-- ID -->
+            <td class="py-3 px-2 text-[#9B8CC4]">{{ user.id }}</td>
+            
+            <!-- Username -->
+            <td class="py-3 px-2 font-medium text-white">
+              {{ user.username }}
+              <span *ngIf="user.username === 'admin'" class="ml-1 text-[10px] bg-[#D4ADFC]/20 text-[#D4ADFC] px-1 rounded">👑</span>
+            </td>
+            
+            <!-- Email -->
+            <td class="py-3 px-2 text-[#9B8CC4]">{{ user.email }}</td>
+            
+            <!-- Coin Balance -->
+            <td class="py-3 px-2">{{ formatNumber(user.coin_balance) }} 🪙</td>
+            
+            <!-- Role (แสดงอย่างเดียว) -->
+            <td class="py-3 px-2">
+              <div class="flex items-center gap-1">
+                <span *ngIf="user.role === 'admin'" class="text-[#D4ADFC]">👑 Admin</span>
+                <span *ngIf="user.role !== 'admin'" class="text-[#7B6FA0]">👤 User</span>
+              </div>
+            </td>
+            
+            <!-- Status (ปุ่มแบน/ปลดแบน) -->
+            <td class="py-3 px-2">
+              <button (click)="toggleUserStatus(user)" 
+                      [disabled]="user.username === 'admin'"
+                      class="px-3 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                      [class.bg-green-500/20]="user.status === 'active'"
+                      [class.text-green-400]="user.status === 'active'"
+                      [class.hover:bg-green-500/30]="user.status === 'active'"
+                      [class.bg-red-500/20]="user.status === 'banned'"
+                      [class.text-red-400]="user.status === 'banned'"
+                      [class.hover:bg-red-500/30]="user.status === 'banned'">
+                {{ user.status === 'active' ? '✅ ปลดแบน' : '❌ แบนแล้ว' }}
+              </button>
+            </td>
+            
+            <!-- Created At -->
+            <td class="py-3 px-2 text-xs text-[#7B6FA0]">{{ user.created_at | date:'dd/MM/yyyy' }}</td>
+            
+            <!-- Delete Button -->
+            <td class="py-3 px-2">
+              <button (click)="deleteUser(user)" 
+                      [disabled]="user.username === 'admin'"
+                      class="text-red-400 hover:text-red-300 text-xs disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                🗑️ ลบ
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Empty State -->
+    <div *ngIf="!loading && users.length === 0" class="text-center py-10 text-[#7B6FA0]">
+      ไม่พบข้อมูลผู้ใช้
+    </div>
+  </div>
+
+  <!-- ======================= TAB 2: จัดการนิยาย ======================= -->
+  <div *ngIf="activeTab === 'novels'" class="p-6">
+    <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+      <h2 class="text-lg font-semibold text-white">📚 จัดการนิยายทั้งหมด</h2>
+      <button (click)="loadNovels()" class="text-xs text-[#D4ADFC] hover:text-[#B085E8] transition-colors">
+        🔄 รีเฟรช
+      </button>
+    </div>
+
+    <!-- Loading -->
+    <div *ngIf="loadingNovels" class="text-center py-10 text-[#7B6FA0]">
+      <div class="animate-pulse">กำลังโหลดข้อมูลนิยาย...</div>
+    </div>
+
+    <!-- Novels Table -->
+    <div *ngIf="!loadingNovels && novels.length > 0" class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="border-b border-[#5C469C]/30">
+          <tr class="text-left text-[#7B6FA0]">
+            <th class="pb-3 px-2">ID</th>
+            <th class="pb-3 px-2">ชื่อนิยาย</th>
+            <th class="pb-3 px-2">ชื่อนักเขียน</th>
+            <th class="pb-3 px-2">สถานะ</th>
+            <th class="pb-3 px-2">ผู้แต่ง (ID)</th>
+            <th class="pb-3 px-2">วันที่สร้าง</th>
+            <th class="pb-3 px-2">จัดการ</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let novel of novels" class="border-b border-[#5C469C]/20 hover:bg-[#5C469C]/10 transition-colors">
+            <td class="py-3 px-2 text-[#9B8CC4]">{{ novel.id }}</td>
+            <td class="py-3 px-2 font-medium text-white">{{ novel.title }}</td>
+            <td class="py-3 px-2 text-[#9B8CC4]">{{ novel.pen_name || '-' }}</td>
+            <td class="py-3 px-2">
+              <select [value]="novel.status" (change)="updateNovelStatus(novel, $event)"
+                      class="bg-[#1D267D] border border-[#5C469C] rounded-lg px-2 py-1 text-xs cursor-pointer hover:border-[#D4ADFC] transition-colors">
+                <option value="draft">📝 ร่าง</option>
+                <option value="published">✅ ตีพิมพ์</option>
+                <option value="banned">🚫 ถูกแบน</option>
+              </select>
+            </td>
+            <td class="py-3 px-2 text-[#9B8CC4]">{{ novel.user_id }}</td>
+            <td class="py-3 px-2 text-xs text-[#7B6FA0]">{{ novel.created_at | date:'dd/MM/yyyy' }}</td>
+            <td class="py-3 px-2">
+              <button (click)="deleteNovel(novel)" 
+                      class="text-red-400 hover:text-red-300 text-xs transition-colors">
+                🗑️ ลบ
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Empty State -->
+    <div *ngIf="!loadingNovels && novels.length === 0" class="text-center py-10 text-[#7B6FA0]">
+      ไม่พบข้อมูลนิยาย
+    </div>
+  </div>
+
+  <!-- ======================= TAB 3: คำขอถอนเงิน ======================= -->
+  <div *ngIf="activeTab === 'withdrawals'" class="p-6">
+    <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+      <h2 class="text-lg font-semibold text-white">💰 คำขอถอนเงินทั้งหมด</h2>
+      <button (click)="loadWithdrawals()" class="text-xs text-[#D4ADFC] hover:text-[#B085E8] transition-colors">
+        🔄 รีเฟรช
+      </button>
+    </div>
+
+    <!-- Loading -->
+    <div *ngIf="loadingWithdrawals" class="text-center py-10 text-[#7B6FA0]">
+      <div class="animate-pulse">กำลังโหลดข้อมูลคำขอถอนเงิน...</div>
+    </div>
+
+    <!-- Withdrawals Table -->
+    <div *ngIf="!loadingWithdrawals && withdrawals.length > 0" class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="border-b border-[#5C469C]/30">
+          <tr class="text-left text-[#7B6FA0]">
+            <th class="pb-3 px-2">ID</th>
+            <th class="pb-3 px-2">ผู้ใช้</th>
+            <th class="pb-3 px-2">จำนวนเงิน</th>
+            <th class="pb-3 px-2">ธนาคาร</th>
+            <th class="pb-3 px-2">เลขบัญชี</th>
+            <th class="pb-3 px-2">สถานะ</th>
+            <th class="pb-3 px-2">วันที่ขอ</th>
+            <th class="pb-3 px-2">จัดการ</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let withdrawal of withdrawals" class="border-b border-[#5C469C]/20 hover:bg-[#5C469C]/10 transition-colors">
+            <td class="py-3 px-2 text-[#9B8CC4]">{{ withdrawal.id }}</td>
+            <td class="py-3 px-2 font-medium text-white">{{ withdrawal.username }}</td>
+            <td class="py-3 px-2 text-[#D4ADFC]">{{ withdrawal.amount | number }} บาท</td>
+            <td class="py-3 px-2 text-[#9B8CC4]">{{ withdrawal.bank_name }}</td>
+            <td class="py-3 px-2 text-[#9B8CC4]">{{ withdrawal.bank_account }}</td>
+            <td class="py-3 px-2">
+              <select [value]="withdrawal.status" (change)="updateWithdrawalStatus(withdrawal, $event)"
+                      class="bg-[#1D267D] border border-[#5C469C] rounded-lg px-2 py-1 text-xs cursor-pointer hover:border-[#D4ADFC] transition-colors">
+                <option value="pending">⏳ รอตรวจสอบ</option>
+                <option value="approved">✅ อนุมัติแล้ว</option>
+                <option value="rejected">❌ ปฏิเสธ</option>
+              </select>
+            </td>
+            <td class="py-3 px-2 text-xs text-[#7B6FA0]">{{ withdrawal.created_at | date:'dd/MM/yyyy HH:mm' }}</td>
+            <td class="py-3 px-2">
+              <button (click)="deleteWithdrawal(withdrawal)" 
+                      class="text-red-400 hover:text-red-300 text-xs transition-colors">
+                🗑️ ลบ
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Empty State -->
+    <div *ngIf="!loadingWithdrawals && withdrawals.length === 0" class="text-center py-10 text-[#7B6FA0]">
+      ไม่พบคำขอถอนเงิน
+    </div>
+  </div>
+
+</div>

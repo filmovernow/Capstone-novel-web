@@ -6,7 +6,9 @@ import { CreateNovelComponent } from './create-novel/create-novel';
 import { SettingsComponent } from './settings/settings';
 import { NovelReaderComponent } from './read-novel/novel-reader';
 import { StorageComponent } from './storage/storage';
-import { TopupComponent } from './topup/topup'; 
+import { TopupComponent } from './topup/topup';
+import { AdminDashboardComponent } from './admin/admin-dashboard';
+import { AdminGuard } from './admin.guard';  // ✅ เพิ่ม import
 export const routes: Routes = [
   { path: '', component: Home },
   { path: 'auth', component: AuthComponent },
@@ -17,5 +19,7 @@ export const routes: Routes = [
   { path: 'read/:id', component: NovelReaderComponent },
   { path: 'storage', component: StorageComponent },
   { path: 'topup', component: TopupComponent },
+  { path: 'admin/dashboard', component: AdminDashboardComponent },
+  { path: 'admin/dashboard', component: AdminDashboardComponent, canActivate: [AdminGuard] },
   { path: '**', redirectTo: '' },
 ];

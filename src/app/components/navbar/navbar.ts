@@ -69,7 +69,15 @@ export class NavbarComponent implements OnInit {
       error: (err) => console.error('Error:', err)
     });
   }
+  
+  navigateToAdmin() {
+    this.profileOpen = false;
+    this.router.navigate(['/admin/dashboard']);
+  }
 
+  get isAdmin(): boolean {
+    return this.currentUser?.role === 'admin' || this.currentUser?.username === 'admin';
+  }
   logout() {
     this.userService.logout();
     this.router.navigate(['/auth']);
