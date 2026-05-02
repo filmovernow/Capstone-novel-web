@@ -212,8 +212,21 @@ export class WriterComponent implements OnInit, OnDestroy {
     return bgs[index % bgs.length];
   }
 
+  createNovel() {
+    this.router.navigate(['/writer/create']);
+  }
+
+  goToTopup() {
+    this.router.navigate(['/topup']);
+  }
+
   goHome() {
     this.router.navigate(['/']);
+  }
+
+  navigateTo(path: string) {
+    this.profileOpen = false;
+    this.router.navigate([path]);
   }
 
   toggleProfile() {

@@ -14,11 +14,10 @@
 
     <!-- LEFT -->
     <div class="flex items-center gap-4">
-      <a routerLink="/" class="text-[#7B6FA0] hover:text-[#D4ADFC] text-sm transition-colors">
+      <div (click)="goBack()" class="text-[#7B6FA0] hover:text-[#D4ADFC] text-sm transition-colors cursor-pointer">
         ← กลับ
-      </a>
+      </div>
     </div>
-
     <!-- RIGHT -->
     <div class="w-1/3 flex justify-end items-center">
 
@@ -51,24 +50,29 @@
           </div>
 
           <!-- แถวแสดงเหรียญ -->
-          <div class="px-4 py-2 bg-gradient-to-r from-[#5C469C]/30 to-[#1D267D] border-b border-[#5C469C]/30">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-2">
-                <span class="text-lg">🪙</span>
-                <span class="text-xs text-[#9B8CC4]">เหรียญของฉัน</span>
-              </div>
-              <div class="flex items-center gap-2">
-                <span class="text-lg font-bold text-[#D4ADFC]">{{ formatNumber(currentUser?.coin_balance || 0) }}</span>
-                <a routerLink="/topup" class="text-xs bg-[#D4ADFC] text-[#0C134F] px-2 py-0.5 rounded-full hover:bg-[#B085E8] transition-colors">+ เติม</a>
+         <div class="px-4 py-2 bg-gradient-to-r from-[#5C469C]/30 to-[#1D267D] border-b border-[#5C469C]/30">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="text-lg">🪙</span>
+                  <span class="text-xs text-[#9B8CC4]">เหรียญของฉัน</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-lg font-bold text-[#D4ADFC]">{{ formatNumber(currentUser?.coin_balance || 0) }}</span>
+                  <button (click)="goToTopup()" class="text-xs bg-[#D4ADFC] text-[#0C134F] px-2 py-0.5 rounded-full hover:bg-[#B085E8] transition-colors">+ เติม</button>
+                </div>
               </div>
             </div>
-          </div>
 
           <div class="py-1.5">
-            <a routerLink="/writer" class="block px-4 py-2 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30">✍️ เขียนนิยาย</a>
-            <a routerLink="/storage" class="block px-4 py-2 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30">📦 คลังของฉัน</a>
-            <a routerLink="/settings" class="block px-4 py-2 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30">⚙️ ตั้งค่า</a>
-            <a routerLink="/topup" class="block px-4 py-2 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30">🪙 เติมเหรียญ</a>
+            <div (click)="navigateTo('/writer')" class="flex items-center gap-3 px-4 py-2.5 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30 hover:text-white transition-colors cursor-pointer">
+              <span>✍️</span> เขียนนิยาย
+            </div>
+            <div (click)="navigateTo('/storage')" class="flex items-center gap-3 px-4 py-2.5 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30 hover:text-white transition-colors cursor-pointer">
+              <span>📦</span> คลังของฉัน
+            </div>
+            <div (click)="navigateTo('/settings')" class="flex items-center gap-3 px-4 py-2.5 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30 hover:text-white transition-colors cursor-pointer">
+              <span>⚙️</span> ตั้งค่าบัญชี
+            </div>
           </div>
 
           <div class="border-t border-[#5C469C]/30 py-1.5">

@@ -103,6 +103,10 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
     });
   }
 
+  goBack() {
+    this.router.navigate(['/']);
+  }
+
   ngOnDestroy() {
     if (this.autoSaveTimer) {
       clearInterval(this.autoSaveTimer);

@@ -50,6 +50,10 @@ export class AuthComponent implements OnInit, AfterViewInit {
     this.form = { username: '', email: '', password: '', confirmPassword: '' };
   }
 
+  goHome() {
+  this.router.navigate(['/']);
+  }
+
   onSubmit() {
     // ... โค้ด onSubmit เหมือนเดิม
     this.errorMsg = '';

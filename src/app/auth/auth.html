@@ -11,10 +11,10 @@
 
     <!-- LOGO -->
     <div class="text-center mb-8">
-      <a href="/" class="inline-flex items-center gap-2 text-[#D4ADFC] font-semibold text-xl">
-        <span class="text-2xl">📚</span>
-        <span class="text-white">NovelHub</span>
-      </a>
+      <div (click)="goHome()" class="inline-flex items-center gap-2 text-[#D4ADFC] font-semibold text-xl cursor-pointer">
+        <img src="logo.png" class="h-8" alt="logo">
+        <span class="text-[#D4ADFC] font-semibold">My Novels</span>
+      </div>
       <p class="text-[#7B6FA0] text-sm mt-2">
         {{ isLogin ? 'ยินดีต้อนรับกลับมา' : 'เริ่มต้นการผจญภัยของคุณ' }}
       </p>

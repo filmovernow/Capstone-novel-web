@@ -81,13 +81,23 @@
               </div>
             </div>
 
+            <!-- ✅ เปลี่ยน <a> เป็น <div> + (click) -->
             <div class="py-1.5">
-              <a routerLink="/writer" class="flex items-center gap-3 px-4 py-2.5 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30 hover:text-white transition-colors" style="text-decoration:none"><span>✍️</span> เขียนนิยาย</a>
-              <a routerLink="/storage" class="flex items-center gap-3 px-4 py-2.5 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30 hover:text-white transition-colors" style="text-decoration:none"><span>📦</span> คลังของฉัน</a>
-              <a routerLink="/settings" class="flex items-center gap-3 px-4 py-2.5 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30 hover:text-white transition-colors" style="text-decoration:none"><span>⚙️</span> ตั้งค่าบัญชี</a>
+              <div (click)="navigateTo('/writer')" class="flex items-center gap-3 px-4 py-2.5 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30 hover:text-white transition-colors cursor-pointer">
+                <span>✍️</span> เขียนนิยาย
+              </div>
+              <div (click)="navigateTo('/storage')" class="flex items-center gap-3 px-4 py-2.5 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30 hover:text-white transition-colors cursor-pointer">
+                <span>📦</span> คลังของฉัน
+              </div>
+              <div (click)="navigateTo('/settings')" class="flex items-center gap-3 px-4 py-2.5 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30 hover:text-white transition-colors cursor-pointer">
+                <span>⚙️</span> ตั้งค่าบัญชี
+              </div>
             </div>
+            
             <div class="border-t border-[#5C469C]/30 py-1.5">
-              <button (click)="logout()" class="w-full text-left flex items-center gap-3 px-4 py-2.5 text-sm text-[#ff9eb5] hover:bg-[#ff6f91]/10 transition-colors"><span>🚪</span> ออกจากระบบ</button>
+              <button (click)="logout()" class="w-full text-left flex items-center gap-3 px-4 py-2.5 text-sm text-[#ff9eb5] hover:bg-[#ff6f91]/10 transition-colors">
+                <span>🚪</span> ออกจากระบบ
+              </button>
             </div>
           </div>
         </div>

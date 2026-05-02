@@ -121,6 +121,10 @@ export class SettingsComponent implements OnInit {
     this.router.navigate(['/']);
   }
 
+  goBack() {
+    this.router.navigate(['/']);
+  }
+
   changePassword(event?: Event) {
     event?.preventDefault();
     this.pwError = '';
@@ -164,6 +168,15 @@ export class SettingsComponent implements OnInit {
         this.cdr.detectChanges();
       }
     });
+  }
+
+  navigateTo(path: string) {
+    this.profileOpen = false;
+    this.router.navigate([path]);
+  }
+
+  goToTopup() {
+    this.router.navigate(['/topup']);
   }
   
   private showToastMessage(message: string, type: 'success' | 'error') {

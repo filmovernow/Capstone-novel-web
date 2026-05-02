@@ -412,6 +412,12 @@ export class NovelReaderComponent implements OnInit, OnDestroy {
     this.showPurchaseNovelConfirm = false;
   }
 
+  navigateTo(path: string) {
+    this.profileOpen = false;
+    this.router.navigate([path]);
+  }
+  
+
   setActiveChapter(id: number) {
     if (this.activeChapterId === id) return;
     if (this.currentLoadingChapterId === id) return;

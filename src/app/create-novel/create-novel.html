@@ -3,9 +3,9 @@
   <nav class="fixed top-0 w-full z-50 bg-[#0C134F]/90 backdrop-blur border-b border-[#1D267D]">
     <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
       <div class="flex items-center gap-3">
-        <a routerLink="/writer" class="text-[#7B6FA0] hover:text-[#D4ADFC] text-sm transition-colors">
+        <div (click)="goBack()" class="text-[#7B6FA0] hover:text-[#D4ADFC] text-sm transition-colors cursor-pointer">
           ← กลับ
-        </a>
+        </div>
         <span class="text-[#5C469C]">/</span>
         <span class="text-white text-sm font-semibold">
           {{ novelTitle || 'นิยายใหม่' }}
