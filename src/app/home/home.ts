@@ -44,6 +44,11 @@ export class Home implements OnInit {
   selectedCat = 'แนะนำ';
   showAllBooks = false;
 
+  // Modal properties
+  showAllBooksModal = false;
+  modalSearch = '';
+  modalBooks: Novel[] = [];
+
   selectedGenre = '';
   selectedTag = '';
 
@@ -84,6 +89,10 @@ export class Home implements OnInit {
       error: (err) => console.error('Error loading genres:', err)
     });
     
+    this.loadNovels();
+  }
+
+  loadNovels() {
     this.http.get<any[]>(`${this.apiUrl}/novels`).subscribe({
       next: (novels) => {
         this.books = novels.filter(novel => novel.status === 'published');
@@ -136,8 +145,35 @@ export class Home implements OnInit {
     return this.filteredBooks.slice(0, 12);
   }
 
-  viewAll() {
-    this.showAllBooks = true;
+  // Modal methods
+  get modalFilteredBooks() {
+    if (!this.modalSearch.trim()) {
+      return this.modalBooks;
+    }
+    const q = this.modalSearch.trim().toLowerCase();
+    return this.modalBooks.filter(b =>
+      b.title.toLowerCase().includes(q) ||
+      (b.pen_name || '').toLowerCase().includes(q)
+    );
+  }
+
+  openAllBooksModal() {
+    console.log('Opening modal...');
+    this.modalBooks = [...this.filteredBooks];
+    console.log('Modal books count:', this.modalBooks.length);
+    this.modalSearch = '';
+    this.showAllBooksModal = true;
+    document.body.style.overflow = 'hidden';
+  }
+
+  closeAllBooksModal() {
+    this.showAllBooksModal = false;
+    this.modalSearch = '';
+    document.body.style.overflow = '';
+  }
+
+  onModalSearch() {
+    // auto filter via getter
   }
 
   onNavbarSearch(searchTerm: string) {

@@ -24,10 +24,14 @@
         <div class="flex-1 min-w-0">
           <p class="text-sm font-semibold text-white truncate">{{b.title}}</p>
           <p class="text-xs text-[#9B8CC4]">{{b.pen_name}}</p>
+          <div class="flex items-center gap-2 mt-1">
+            <span class="text-[10px] text-[#9B8CC4] flex items-center gap-0.5">❤️ {{ formatNumber(b.like_count || 0) }}</span>
+            <span class="text-[10px] text-[#9B8CC4] flex items-center gap-0.5">👁 {{ formatNumber(b.view_count || 0) }}</span>
+          </div>
         </div>
         <div class="flex gap-1 flex-wrap">
-          <span *ngFor="let g of b.genres | slice:0:3" class="text-[10px] bg-[#5C469C]/50 text-[#D4ADFC] px-2 py-0.5 rounded-full">{{g.name}}</span>
-          <span *ngIf="b.genres && b.genres.length > 3" class="text-[10px] text-[#7B6FA0] px-1">+{{b.genres.length - 3}}</span>
+          <span *ngFor="let g of b.genres | slice:0:2" class="text-[9px] bg-[#5C469C]/50 text-[#D4ADFC] px-1.5 py-0.5 rounded-full">{{g.name}}</span>
+          <span *ngIf="b.genres && b.genres.length > 2" class="text-[9px] text-[#7B6FA0] px-1">+{{b.genres.length - 2}}</span>
         </div>
       </div>
     </div>
@@ -95,7 +99,7 @@
           <span *ngIf="selectedCat === 'อัปเดตล่าสุด'">อัปเดตล่าสุด</span>
           <span *ngIf="selectedCat === 'กำลังฮิต'">ยอดนิยม</span>
         </h2>
-        <button (click)="viewAll()" class="text-sm text-[#D4ADFC] hover:text-[#B085E8] transition-colors cursor-pointer">
+        <button (click)="openAllBooksModal()" class="text-sm text-[#D4ADFC] hover:text-[#B085E8] transition-colors cursor-pointer">
           ดูทั้งหมด →
         </button>
       </div>
@@ -108,8 +112,11 @@
             <div *ngIf="!book.cover_path" class="w-full h-48 bg-[#0C134F] flex items-center justify-center text-sm text-[#9B8CC4]">📖 ไม่มีรูปปก</div>
             <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-70"></div>
             
-            <div class="absolute bottom-2 right-2 bg-black/60 backdrop-blur rounded-full px-2 py-0.5 text-xs text-white flex items-center gap-1">
-              <span>👁️</span> {{book.view_count || 0 | number}}
+            <!-- ✅ แก้ badge ด้านล่างให้แสดงทั้งวิวและไลค์ -->
+            <div class="absolute bottom-2 right-2 bg-black/60 backdrop-blur rounded-full px-2 py-0.5 text-[10px] text-white flex items-center gap-1.5">
+              <span class="flex items-center gap-0.5">❤️ {{ formatNumber(book.like_count || 0) }}</span>
+              <span class="w-0.5 h-0.5 rounded-full bg-white/40"></span>
+              <span class="flex items-center gap-0.5">👁️ {{ formatNumber(book.view_count || 0) }}</span>
             </div>
           </div>
           <div class="p-4">
@@ -119,9 +126,6 @@
               <span *ngFor="let g of book.genres | slice:0:3" class="text-[10px] bg-[#5C469C]/50 text-[#D4ADFC] px-2 py-0.5 rounded-full">{{g.name}}</span>
               <span *ngIf="book.genres && book.genres.length > 3" class="text-[10px] text-[#7B6FA0] px-1">+{{book.genres.length - 3}}</span>
               <span *ngIf="!book.genres || book.genres.length === 0" class="text-[10px] text-[#7B6FA0]">ไม่มีแนว</span>
-            </div>
-            <div class="flex flex-wrap gap-1" *ngIf="book.tags?.length">
-              <span *ngFor="let t of book.tags" class="text-[9px] bg-[#0C134F]/60 text-[#9B8CC4] px-2 py-0.5 rounded-full border border-[#5C469C]/30">#{{t.name}}</span>
             </div>
           </div>
         </div>
@@ -161,4 +165,64 @@
     <p>© 2025 NovelHub · Angular + Tailwind CSS</p>
   </footer>
 
+</div>
+
+<!-- ALL BOOKS MODAL -->
+<div *ngIf="showAllBooksModal" class="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-md" (click)="closeAllBooksModal()">
+  <div class="bg-[#1D267D] rounded-2xl max-w-6xl w-full max-h-[85vh] overflow-hidden border border-[#5C469C]/50 shadow-2xl" (click)="$event.stopPropagation()">
+    
+    <!-- Modal Header -->
+    <div class="flex items-center justify-between p-5 border-b border-[#5C469C]/30">
+      <h3 class="text-xl font-semibold text-white">
+        <span *ngIf="selectedCat === 'แนะนำ'">หนังสือแนะนำทั้งหมด</span>
+        <span *ngIf="selectedCat === 'อัปเดตล่าสุด'">อัปเดตล่าสุดทั้งหมด</span>
+        <span *ngIf="selectedCat === 'กำลังฮิต'">ยอดนิยมทั้งหมด</span>
+      </h3>
+      <button (click)="closeAllBooksModal()" class="text-[#7B6FA0] hover:text-[#D4ADFC] text-2xl">&times;</button>
+    </div>
+    
+    <!-- Modal Search -->
+    <div class="p-5 border-b border-[#5C469C]/30">
+      <div class="relative">
+        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-[#7B6FA0]">🔍</span>
+        <input [(ngModel)]="modalSearch" (input)="onModalSearch()" 
+               placeholder="ค้นหาชื่อนิยาย, ผู้เขียน..." 
+               class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm placeholder-[#7B6FA0] outline-none focus:border-[#D4ADFC]" />
+      </div>
+    </div>
+    
+    <!-- Modal Body - Book Grid -->
+    <div class="p-5 overflow-y-auto max-h-[55vh]">
+      <div *ngIf="modalFilteredBooks.length === 0" class="text-center py-10 text-[#7B6FA0]">
+        ไม่พบนิยายที่ค้นหา
+      </div>
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+        <div *ngFor="let book of modalFilteredBooks" 
+            [routerLink]="['/read', book.id]" 
+            (click)="closeAllBooksModal()"
+            class="bg-[#0C134F]/60 rounded-xl overflow-hidden border border-[#5C469C]/30 hover:border-[#D4ADFC]/50 hover:-translate-y-1 transition-all duration-200 cursor-pointer group">
+          <div class="relative">
+            <img *ngIf="book.cover_path" [src]="book.cover_path" class="w-full h-36 object-cover" />
+            <div *ngIf="!book.cover_path" class="w-full h-36 bg-[#0C134F] flex items-center justify-center text-3xl">📖</div>
+            <!-- ✅ แก้ badge ด้านล่างให้แสดงทั้งวิวและไลค์ -->
+            <div class="absolute bottom-1 right-1 bg-black/60 backdrop-blur rounded-full px-1.5 py-0.5 text-[9px] text-white flex items-center gap-1">
+              <span class="flex items-center gap-0.5">❤️ {{ formatNumber(book.like_count || 0) }}</span>
+              <span class="w-0.5 h-0.5 rounded-full bg-white/40"></span>
+              <span class="flex items-center gap-0.5">👁 {{ formatNumber(book.view_count || 0) }}</span>
+            </div>
+          </div>
+          <div class="p-2">
+            <p class="font-semibold text-white text-xs line-clamp-1">{{ book.title }}</p>
+            <p class="text-[10px] text-[#9B8CC4] truncate">{{ book.pen_name }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Modal Footer -->
+    <div class="p-4 border-t border-[#5C469C]/30 text-center text-xs text-[#7B6FA0]">
+      พบ {{ modalFilteredBooks.length }} เรื่อง
+    </div>
+    
+  </div>
 </div>
