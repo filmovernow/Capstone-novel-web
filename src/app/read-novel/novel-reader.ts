@@ -147,6 +147,46 @@ export class NovelReaderComponent implements OnInit, OnDestroy {
     }
   }
   
+  shareNovel() {
+    const url = window.location.href;
+    
+    navigator.clipboard.writeText(url).then(() => {
+      // แสดง alert สวยงาม
+      this.showToast('✅ คัดลอกลิงก์นิยายเรียบร้อยแล้ว');
+    }).catch(() => {
+      this.showToast('❌ คัดลอกไม่สำเร็จ กรุณาลองอีกครั้ง');
+    });
+  }
+
+  showToast(message: string) {
+    // สร้าง element toast ชั่วคราว
+    const toast = document.createElement('div');
+    toast.innerText = message;
+    toast.style.position = 'fixed';
+    toast.style.bottom = '20px';
+    toast.style.left = '50%';
+    toast.style.transform = 'translateX(-50%)';
+    toast.style.backgroundColor = '#1D267D';
+    toast.style.color = '#D4ADFC';
+    toast.style.padding = '12px 24px';
+    toast.style.borderRadius = '9999px';
+    toast.style.fontSize = '14px';
+    toast.style.zIndex = '9999';
+    toast.style.border = '1px solid #5C469C';
+    toast.style.boxShadow = '0 4px 20px rgba(0,0,0,0.3)';
+    
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transition = 'opacity 0.3s';
+      setTimeout(() => toast.remove(), 300);
+    }, 2000);
+  }
+
+
+
+
   goBack() {
     if (this.canGoBack && window.history.length > 1) {
       this.location.back();
