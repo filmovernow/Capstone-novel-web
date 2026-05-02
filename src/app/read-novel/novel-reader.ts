@@ -15,6 +15,7 @@ interface Chapter {
   chapter_no: number;
   title: string;
   isDisabled?: boolean;
+  needsPurchase?: boolean;
   content?: string;
   like_count?: number;
   is_liked?: boolean;
@@ -60,8 +61,12 @@ export class NovelReaderComponent implements OnInit, OnDestroy {
   isPurchasing = false;
   hasAccessToNovel = false;
   isNovelOwner = false;
+  pricingModel: string = 'free';
   
-  // ✅ เพิ่มตัวแปรป้องกันการซื้อซ้ำ
+  showUnlockConfirmModal = false;
+  unlockTargetChapter: Chapter | null = null;
+  showPurchaseNovelConfirm = false;
+  
   private isPurchasingNovel = false;
   
   private isLoading = false;
@@ -215,19 +220,53 @@ export class NovelReaderComponent implements OnInit, OnDestroy {
       this.hasPurchasedNovel = novel.has_purchased === true;
       this.novelAuthorId = novel.user_id || 0;
       this.isNovelOwner = this.currentUser && this.currentUser.id === this.novelAuthorId;
+      this.pricingModel = novel.pricing_model || 'free';
       
       this.hasAccessToNovel = this.isNovelOwner || this.hasPurchasedNovel;
       
       const isOneTimeLocked = novel.pricing_model === 'one_time' && !this.hasAccessToNovel && novel.price > 0;
+      const isPerChapter = novel.pricing_model === 'per_chapter' && !this.hasAccessToNovel;
       
       const chaptersRes: any[] = await firstValueFrom(
         this.http.get<any[]>(`${this.apiUrl}/novels/${this.novelId}/chapters`, { headers })
       );
       
+      // ดึงข้อมูลตอนที่ปลดล็อคแล้ว
+      let unlockedChapters: number[] = [];
+      if (this.currentUser) {
+        try {
+          const unlockedRes: any = await firstValueFrom(
+            this.http.get(`${this.apiUrl}/users/${this.currentUser.id}/unlocked_chapters?novel_id=${this.novelId}`, { headers })
+          );
+          unlockedChapters = unlockedRes || [];
+        } catch (e) {
+          unlockedChapters = [];
+        }
+      }
+      
       const mappedChapters: Chapter[] = chaptersRes.map(ch => {
         let isDisabled = false;
+        let needsPurchase = false;
+        
         if (isOneTimeLocked && ch.chapter_no > 0) {
           isDisabled = true;
+          needsPurchase = false;
+        }
+        
+        if (isPerChapter) {
+          if (unlockedChapters.includes(ch.chapter_no)) {
+            isDisabled = false;
+            needsPurchase = false;
+          } else if (ch.chapter_no === 1 && ch.price === 0) {
+            isDisabled = false;
+            needsPurchase = false;
+          } else if (ch.price && ch.price > 0) {
+            isDisabled = true;
+            needsPurchase = true;
+          } else {
+            isDisabled = false;
+            needsPurchase = false;
+          }
         }
         
         return {
@@ -238,6 +277,7 @@ export class NovelReaderComponent implements OnInit, OnDestroy {
           like_count: 0,
           is_liked: false,
           isDisabled: isDisabled,
+          needsPurchase: needsPurchase,
           price: ch.price || 0
         };
       });
@@ -250,6 +290,7 @@ export class NovelReaderComponent implements OnInit, OnDestroy {
           chapter_no: 0, 
           title: 'บทนำ', 
           isDisabled: false, 
+          needsPurchase: false,
           content: this.novelDescription,
           like_count: 0,
           is_liked: false,
@@ -293,41 +334,144 @@ export class NovelReaderComponent implements OnInit, OnDestroy {
     });
   }
 
+  showUnlockModal(chapter: Chapter) {
+    if (this.hasPurchasedNovel || this.isNovelOwner) {
+      this.setActiveChapter(chapter.id);
+      return;
+    }
+    
+    if (chapter.needsPurchase && chapter.price && chapter.price > 0) {
+      this.unlockTargetChapter = chapter;
+      this.showUnlockConfirmModal = true;
+    } else if (chapter.isDisabled && !chapter.needsPurchase) {
+      alert('กรุณาซื้อนิยายก่อนเพื่ออ่านตอนนี้');
+    }
+  }
+
+  closeUnlockConfirmModal() {
+    this.showUnlockConfirmModal = false;
+    this.unlockTargetChapter = null;
+  }
+
+  confirmUnlockChapter() {
+    if (!this.unlockTargetChapter) return;
+    
+    this.isPurchasing = true;
+    const chapterId = this.unlockTargetChapter.id;
+    
+    this.http.post(`${this.apiUrl}/novels/${this.novelId}/chapters/${chapterId}/unlock`, {}, { headers: this.getHeaders() })
+      .subscribe({
+        next: (res: any) => {
+          alert(`✅ ${res.message}`);
+          if (this.currentUser) {
+            this.currentUser.coin_balance = res.balance;
+          }
+          this.showUnlockConfirmModal = false;
+          this.isPurchasing = false;
+
+          this.chapters = this.chapters.map(ch => {
+          if (ch.id === chapterId) {
+            return { ...ch, isDisabled: false, needsPurchase: false };
+          }
+            return ch;
+          });
+          
+          // รีเฟรชข้อมูลทั้งหมด
+          this.setActiveChapter(chapterId);
+          this.cdr.detectChanges();
+        },
+        error: (err) => {
+          this.isPurchasing = false;
+          if (err.status === 409) {
+            alert('คุณปลดล็อคตอนนี้ไปแล้ว');
+            this.showUnlockConfirmModal = false;
+            this.loadAllData();
+          } else if (err.status === 402) {
+            alert(`❌ ${err.error?.error || 'เหรียญไม่พอ กรุณาเติมเงิน'}`);
+            this.router.navigate(['/topup']);
+          } else {
+            alert('เกิดข้อผิดพลาด กรุณาลองอีกครั้ง');
+          }
+        }
+      });
+  }
+
+  openPurchaseNovelConfirm() {
+    if (this.hasPurchasedNovel) {
+      alert('คุณซื้อนิยายเรื่องนี้ไปแล้ว');
+      return;
+    }
+    if (this.isNovelOwner) {
+      alert('คุณเป็นเจ้าของนิยายเรื่องนี้');
+      return;
+    }
+    this.showPurchaseNovelConfirm = true;
+  }
+
+  closePurchaseNovelConfirm() {
+    this.showPurchaseNovelConfirm = false;
+  }
+
   setActiveChapter(id: number) {
     if (this.activeChapterId === id) return;
     if (this.currentLoadingChapterId === id) return;
     
     const chapter = this.chapters.find(c => c.id === id);
+    if (!chapter) return;
     
-    if (chapter && chapter.isDisabled) {
-      alert('กรุณาซื้อนิยายก่อนเพื่ออ่านตอนนี้');
-      return;
-    }
-    
-    if (!this.hasAccessToNovel && id !== 0) {
-      alert('กรุณาซื้อนิยายก่อนเพื่ออ่านตอนอื่น');
-      return;
-    }
-    
-    if (chapter && !chapter.isDisabled) {
-      this.activeChapterId = id;
-      this.loadChapter(id);
-      
-      if (id !== 0) {
-        const progress = localStorage.getItem('reading_progress');
-        let data: any = {};
-        if (progress) {
-          try {
-            data = JSON.parse(progress);
-          } catch(e) {}
-        }
-        data[this.novelId] = id;
-        localStorage.setItem('reading_progress', JSON.stringify(data));
-        this.saveReadingHistory(id);
-      }
-      
+    // บทนำ (id === 0) เข้าได้เสมอ
+    if (id === 0) {
+      this.activeChapterId = 0;
+      this.loadChapter(0);
       window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
     }
+    
+    if (chapter.needsPurchase) {
+      this.showUnlockModal(chapter);
+      return;
+    }
+    
+    if (this.pricingModel === 'per_chapter') {
+      if (chapter.isDisabled && !chapter.needsPurchase) {
+        alert('กรุณาปลดล็อคตอนนี้ก่อนอ่าน');
+        return;
+      }
+    }
+    
+    if (this.pricingModel === 'one_time') {
+      if (!this.hasAccessToNovel) {
+        alert('กรุณาซื้อนิยายก่อนเพื่ออ่านตอนนี้');
+        return;
+      }
+      if (chapter.isDisabled) {
+        alert('กรุณาซื้อนิยายก่อนเพื่ออ่านตอนนี้');
+        return;
+      }
+    }
+    
+    if (this.pricingModel === 'free' && chapter.isDisabled) {
+      alert('ไม่สามารถอ่านตอนนี้ได้');
+      return;
+    }
+    
+    this.activeChapterId = id;
+    this.loadChapter(id);
+    
+    if (id !== 0) {
+      const progress = localStorage.getItem('reading_progress');
+      let data: any = {};
+      if (progress) {
+        try {
+          data = JSON.parse(progress);
+        } catch(e) {}
+      }
+      data[this.novelId] = id;
+      localStorage.setItem('reading_progress', JSON.stringify(data));
+      this.saveReadingHistory(id);
+    }
+    
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   loadChapter(id: number) {
@@ -361,7 +505,8 @@ export class NovelReaderComponent implements OnInit, OnDestroy {
                 content: rawContent,
                 like_count: res.like_count || 0,
                 is_liked: res.is_liked === true,
-                isDisabled: false
+                isDisabled: false,
+                needsPurchase: false
               };
             }
             return c;
@@ -408,30 +553,62 @@ export class NovelReaderComponent implements OnInit, OnDestroy {
   }
 
   nextChapter() {
-    if (!this.hasAccessToNovel && this.activeChapterId === 0) {
-      alert('กรุณาซื้อนิยายก่อนเพื่ออ่านตอนต่อไป');
-      return;
-    }
-    
     const currentIndex = this.chapters.findIndex(c => c.id === this.activeChapterId);
     if (currentIndex < this.chapters.length - 1) {
-      const nextChapter = this.chapters[currentIndex + 1];
-      if (nextChapter.isDisabled) {
-        alert('กรุณาซื้อนิยายก่อนเพื่ออ่านตอนนี้');
+      const nextChap = this.chapters[currentIndex + 1];
+      
+      // บทนำ (0) -> ตอนที่ 1: ให้ไปได้เลย
+      if (this.activeChapterId === 0 && nextChap.id === 1 && !nextChap.needsPurchase) {
+        this.setActiveChapter(1);
         return;
       }
-      this.setActiveChapter(nextChapter.id);
+      
+      if (nextChap.needsPurchase) {
+        this.showUnlockModal(nextChap);
+        return;
+      }
+      
+      if (this.pricingModel === 'per_chapter' && nextChap.isDisabled && !nextChap.needsPurchase) {
+        alert('กรุณาปลดล็อคตอนนี้ก่อนอ่าน');
+        return;
+      }
+      
+      if (this.pricingModel === 'one_time' && !this.hasAccessToNovel && nextChap.id !== 0) {
+        alert('กรุณาซื้อนิยายก่อนเพื่ออ่านตอนต่อไป');
+        return;
+      }
+      
+      this.setActiveChapter(nextChap.id);
     }
   }
 
   prevChapter() {
-    if (!this.hasAccessToNovel && this.activeChapterId === 0) {
-      return;
-    }
-    
     const currentIndex = this.chapters.findIndex(c => c.id === this.activeChapterId);
     if (currentIndex > 0) {
-      this.setActiveChapter(this.chapters[currentIndex - 1].id);
+      const prevChap = this.chapters[currentIndex - 1];
+      
+      // กลับไปบทนำ: ให้ทำได้เลย
+      if (prevChap.id === 0) {
+        this.setActiveChapter(0);
+        return;
+      }
+      
+      if (prevChap.needsPurchase) {
+        this.showUnlockModal(prevChap);
+        return;
+      }
+      
+      if (this.pricingModel === 'per_chapter' && prevChap.isDisabled && !prevChap.needsPurchase) {
+        alert('กรุณาปลดล็อคตอนนี้ก่อนอ่าน');
+        return;
+      }
+      
+      if (this.pricingModel === 'one_time' && !this.hasAccessToNovel && prevChap.id !== 0) {
+        alert('กรุณาซื้อนิยายก่อนเพื่ออ่านตอนก่อนหน้า');
+        return;
+      }
+      
+      this.setActiveChapter(prevChap.id);
     }
   }
 
@@ -518,23 +695,20 @@ export class NovelReaderComponent implements OnInit, OnDestroy {
   }
 
   purchaseNovel() {
-    // ป้องกันการกดซ้ำ
     if (this.isPurchasingNovel) {
       console.log('⏳ กำลังดำเนินการ กรุณารอสักครู่...');
       return;
     }
     
-    // ถ้าซื้อไปแล้ว
     if (this.hasPurchasedNovel) {
       alert('คุณซื้อนิยายเรื่องนี้ไปแล้ว');
-      this.showPurchaseModal = false;
+      this.showPurchaseNovelConfirm = false;
       return;
     }
     
-    // ถ้าเป็นเจ้าของ
     if (this.isNovelOwner) {
       alert('คุณเป็นเจ้าของนิยายเรื่องนี้');
-      this.showPurchaseModal = false;
+      this.showPurchaseNovelConfirm = false;
       return;
     }
     
@@ -546,40 +720,31 @@ export class NovelReaderComponent implements OnInit, OnDestroy {
         next: (res: any) => {
           console.log('✅ Purchase success:', res);
           
-          // ✅ อัปเดต state ทันที
           this.hasPurchasedNovel = true;
           this.hasAccessToNovel = true;
           
-          // ✅ อัปเดตเหรียญใน currentUser
           if (this.currentUser) {
             this.currentUser.coin_balance = res.balance;
           }
           
-          // ✅ บันทึก localStorage เพื่อป้องกันการซื้อซ้ำ
           localStorage.setItem(`purchased_${this.novelId}`, 'true');
           
-          // ✅ ปิด modal
-          this.showPurchaseModal = false;
+          this.showPurchaseNovelConfirm = false;
           this.isPurchasingNovel = false;
           this.isPurchasing = false;
           
-          // ✅ รีเฟรช chapters (เอาค่า disable ออก)
           this.chapters = this.chapters.map(ch => {
             if (ch.id !== 0) {
-              return { ...ch, isDisabled: false };
+              return { ...ch, isDisabled: false, needsPurchase: false };
             }
             return ch;
           });
           
-          // ✅ โหลดตอนปัจจุบันใหม่
           if (this.activeChapterId !== 0) {
             this.loadChapter(this.activeChapterId);
           }
           
-          // ✅ รีเฟรชข้อมูล user จาก backend (optional)
           this.userService.loadProfile();
-          
-          // ✅ แจ้งเตือนสำเร็จ
           alert(`✅ ${res.message || 'ซื้อนิยายสำเร็จ!'}`);
           
           this.cdr.detectChanges();
@@ -589,16 +754,14 @@ export class NovelReaderComponent implements OnInit, OnDestroy {
           this.isPurchasingNovel = false;
           this.isPurchasing = false;
           
-          // ✅ ถ้า error แต่ status 200 (บางที response มัน weird)
           if (err.status === 200) {
-            // มันควร success แต่ error callback ถูกเรียก
             console.log('⚠️ Got status 200 but in error callback, treating as success');
             this.hasPurchasedNovel = true;
             this.hasAccessToNovel = true;
-            this.showPurchaseModal = false;
+            this.showPurchaseNovelConfirm = false;
             this.chapters = this.chapters.map(ch => {
               if (ch.id !== 0) {
-                return { ...ch, isDisabled: false };
+                return { ...ch, isDisabled: false, needsPurchase: false };
               }
               return ch;
             });
@@ -610,16 +773,15 @@ export class NovelReaderComponent implements OnInit, OnDestroy {
             return;
           }
           
-          // กรณีซื้อไปแล้ว (Conflict)
           if (err.status === 409 || err.status === 422) {
             alert('คุณซื้อนิยายเรื่องนี้ไปแล้ว');
             this.hasPurchasedNovel = true;
             this.hasAccessToNovel = true;
-            this.showPurchaseModal = false;
+            this.showPurchaseNovelConfirm = false;
             
             this.chapters = this.chapters.map(ch => {
               if (ch.id !== 0) {
-                return { ...ch, isDisabled: false };
+                return { ...ch, isDisabled: false, needsPurchase: false };
               }
               return ch;
             });
@@ -630,10 +792,9 @@ export class NovelReaderComponent implements OnInit, OnDestroy {
             return;
           }
           
-          // กรณีเงินไม่พอ
           if (err.status === 402) {
             alert(`❌ ${err.error?.error || 'เหรียญไม่พอ กรุณาเติมเงิน'}`);
-            this.showPurchaseModal = false;
+            this.showPurchaseNovelConfirm = false;
             this.router.navigate(['/topup']);
             return;
           }
@@ -643,7 +804,6 @@ export class NovelReaderComponent implements OnInit, OnDestroy {
       });
   }
 
-  // ✅ เพิ่ม method เช็คสถานะการซื้อจาก localStorage
   checkPurchasedStatus(): boolean {
     const localFlag = localStorage.getItem(`purchased_${this.novelId}`);
     if (localFlag === 'true') {
@@ -668,6 +828,13 @@ export class NovelReaderComponent implements OnInit, OnDestroy {
           }
           this.showPurchaseModal = false;
           this.isPurchasing = false;
+          
+          this.chapters = this.chapters.map(ch => {
+            if (ch.id === chapterId) {
+              return { ...ch, needsPurchase: false, isDisabled: false };
+            }
+            return ch;
+          });
           
           this.loadChapter(chapterId);
           this.cdr.detectChanges();
