@@ -1,10 +1,11 @@
+// create-novel.ts
 import { Component, ChangeDetectorRef, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink, Router, ActivatedRoute } from '@angular/router';
 import { EditorComponent } from '@tinymce/tinymce-angular';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { forkJoin } from 'rxjs';
+import { forkJoin, firstValueFrom } from 'rxjs';
 
 interface Chapter {
   id: number;
@@ -12,9 +13,9 @@ interface Chapter {
   title: string;
   content: string;
   published: boolean;
-  price?: number;           // สำหรับ per_chapter
-  earlyAccessPrice?: number; // สำหรับ early_access
-  freeDate?: string;        // วันที่ปลดล็อคให้ฟรี
+  price?: number;
+  earlyAccessPrice?: number;
+  freeDate?: string;
   comments?: Comment[];
 }
 
@@ -53,7 +54,7 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
   ];
   
   coverEmojis = ['📖', '🌸', '⚔️', '🌙', '🏰', '🕵️', '💜', '🤖', '👻', '🍃', '📜', '😂'];
-  tagSuggestions = ['รักสามเส้า', 'CEO', 'แม่บ้าน', 'มาเฟีย', 'ย้อนเวลา', 'ชาติหน้า', 'โรงเรียน', 'มหาลัย', 'ตลก', 'น้ำตาซึม'];
+  
   newTag = '';
 
   chapters: Chapter[] = [];
@@ -67,12 +68,25 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
   novelId: number | null = null;
   isEditMode = false;
 
-  // ✅ ใช้แค่ pricingModel แบบเดียว
   pricingModel: 'one_time' | 'early_access' | 'free' | 'per_chapter' = 'free';
   oneTimePrice = 0;
   earlyAccessPrice = 0;
   earlyAccessDays = 7;
   perChapterPrice = 0;
+
+  editorConfig = {
+    height: 500,
+    menubar: false,
+    skin: 'oxide-dark',
+    content_css: 'dark',
+    plugins: [
+      'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
+      'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
+      'insertdatetime', 'media', 'table', 'code', 'help', 'wordcount'
+    ],
+    toolbar: 'undo redo | blocks | bold italic forecolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | image | removeformat | help',
+    content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px; background-color: #0C134F; color: #fff; }'
+  };
 
   constructor(
     private http: HttpClient,
@@ -180,7 +194,6 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
     });
   }
 
-  // ✅ helper method แปลง pricingModel
   getPricingData(): { isPremium: boolean; novelPrice: number } {
     switch(this.pricingModel) {
       case 'one_time':
@@ -195,76 +208,75 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
     }
   }
 
-  loadNovelData() {
-    this.http.get<any>(`${this.apiUrl}/novels/${this.novelId}`)
-      .subscribe({
-        next: (novel) => {
-          this.novelTitle = novel.title;
-          this.penName = novel.pen_name;
-          this.synopsis = novel.description;
-          this.selectedGenres = novel.genres?.map((g: any) => g.name) || [];
-          this.currentStatus = novel.status || 'writing';
-          if (novel.cover_path) {
-            this.coverImageUrl = novel.cover_path;
-          }
-          
-          // ✅ โหลด pricingModel จาก backend
-          if (novel.pricing_model) {
-            this.pricingModel = novel.pricing_model;
-          } else if (novel.is_premium) {
-            // fallback สำหรับข้อมูลเก่า
-            this.pricingModel = novel.price > 0 ? 'one_time' : 'early_access';
-          } else {
-            this.pricingModel = 'free';
-          }
-          
-          this.oneTimePrice = novel.price || 0;
-          this.earlyAccessDays = novel.early_access_days || 7;
-          this.perChapterPrice = novel.per_chapter_price || 0;
-          
-          this.http.get<any[]>(`${this.apiUrl}/novels/${this.novelId}/chapters`)
-            .subscribe({
-              next: (chapters) => {
-                console.log('📚 Chapters from API:', chapters);
-                
-                this.chapters = [];
-                this.nextId = 1;
-                
-                if (chapters && chapters.length > 0) {
-                  chapters.forEach((ch) => {
-                    const chapter: Chapter = {
-                      id: ch.id,
-                      order: ch.chapter_no,
-                      title: ch.title || `ตอนที่ ${ch.chapter_no}`,
-                      content: ch.content || '',
-                      published: true,
-                      price: ch.price || 0,
-                      earlyAccessPrice: ch.early_access_price || ch.price || 0,
-                      freeDate: ch.free_date,
-                      comments: []
-                    };
-                    this.chapters.push(chapter);
-                  });
-                }
-                
-                console.log('📋 Chapters loaded:', this.chapters);
-                this.cdr.detectChanges();
-                
-                if (this.chapters.length > 0) {
-                  this.activeChapter = this.chapters[0];
-                } else {
-                  this.addChapter();
-                }
-                this.cdr.detectChanges();
-              },
-              error: (err) => {
-                console.error('Error loading chapters:', err);
-                this.addChapter();
-              }
-            });
-        },
-        error: (err) => console.error('Error loading novel:', err)
-      });
+  async loadNovelData() {
+    try {
+      const novel: any = await firstValueFrom(
+        this.http.get<any>(`${this.apiUrl}/novels/${this.novelId}`)
+      );
+      
+      this.novelTitle = novel.title;
+      this.penName = novel.pen_name;
+      this.synopsis = novel.description;
+      this.selectedGenres = novel.genres?.map((g: any) => g.name) || [];
+      this.currentStatus = novel.status || 'writing';
+      
+      if (novel.cover_path) {
+        this.coverImageUrl = novel.cover_path;
+        this.selectedCover = '';
+      }
+      
+      if (novel.pricing_model) {
+        this.pricingModel = novel.pricing_model;
+      } else if (novel.is_premium) {
+        this.pricingModel = novel.price > 0 ? 'one_time' : 'early_access';
+      } else {
+        this.pricingModel = 'free';
+      }
+      
+      this.oneTimePrice = novel.price || 0;
+      this.earlyAccessDays = novel.early_access_days || 7;
+      this.perChapterPrice = novel.per_chapter_price || 0;
+      
+      const chapters: any[] = await firstValueFrom(
+        this.http.get<any[]>(`${this.apiUrl}/novels/${this.novelId}/chapters`)
+      );
+      
+      console.log('📚 Chapters from API:', chapters);
+      
+      this.chapters = [];
+      this.nextId = 1;
+      
+      if (chapters && chapters.length > 0) {
+        chapters.forEach((ch) => {
+          const chapter: Chapter = {
+            id: ch.id,
+            order: ch.chapter_no,
+            title: ch.title || `ตอนที่ ${ch.chapter_no}`,
+            content: ch.content || '',
+            published: true,
+            price: ch.price || 0,
+            earlyAccessPrice: ch.early_access_price || ch.price || 0,
+            freeDate: ch.free_date,
+            comments: []
+          };
+          this.chapters.push(chapter);
+        });
+      }
+      
+      console.log('📋 Chapters loaded:', this.chapters);
+      this.cdr.detectChanges();
+      
+      if (this.chapters.length > 0) {
+        this.activeChapter = this.chapters[0];
+      } else {
+        this.addChapter();
+      }
+      this.cdr.detectChanges();
+      
+    } catch (err) {
+      console.error('Error loading novel:', err);
+      this.addChapter();
+    }
   }
 
   fetchGenres() {
@@ -277,20 +289,6 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
       error: (err) => console.error('Error loading genres:', err)
     });
   }
-
-  editorConfig = {
-    height: 500,
-    menubar: false,
-    skin: 'oxide-dark',
-    content_css: 'dark',
-    plugins: [
-      'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
-      'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
-      'insertdatetime', 'media', 'table', 'code', 'help', 'wordcount'
-    ],
-    toolbar: 'undo redo | blocks | bold italic forecolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | image | removeformat | help',
-    content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px; background-color: #0C134F; color: #fff; }'
-  };
 
   toggleGenre(g: string) {
     const idx = this.selectedGenres.indexOf(g);
@@ -308,12 +306,6 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
     }
   }
 
-  toggleTag(tag: string) {
-    const idx = this.selectedTags.indexOf(tag);
-    if (idx > -1) this.selectedTags.splice(idx, 1);
-    else this.selectedTags.push(tag);
-  }
-
   removeTag(tag: string) {
     const idx = this.selectedTags.indexOf(tag);
     if (idx > -1) this.selectedTags.splice(idx, 1);
@@ -322,12 +314,26 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
   handleCoverImageUpload(event: any) {
     const file = event.target.files?.[0];
     if (file) {
+      if (!file.type.startsWith('image/')) {
+        alert('กรุณาเลือกไฟล์รูปภาพเท่านั้น');
+        return;
+      }
+      
+      if (file.size > 5 * 1024 * 1024) {
+        alert('ไฟล์รูปต้องมีขนาดไม่เกิน 5MB');
+        return;
+      }
+      
       const reader = new FileReader();
       reader.onload = (e: any) => {
         this.coverImageUrl = e.target.result;
-        this.coverBase64 = e.target.result.split(',')[1];
+        const base64 = e.target.result.split(',')[1];
+        this.coverBase64 = base64;
         this.selectedCover = '';
         this.cdr.detectChanges();
+      };
+      reader.onerror = () => {
+        alert('เกิดข้อผิดพลาดในการอ่านไฟล์');
       };
       reader.readAsDataURL(file);
     }
@@ -337,6 +343,18 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
     this.coverImageUrl = '';
     this.coverBase64 = '';
     this.selectedCover = '📖';
+    if (this.isEditMode && this.novelId) {
+      this.updateNovel(this.currentStatus, false);
+    }
+  }
+
+  selectEmojiCover(emoji: string) {
+    this.selectedCover = emoji;
+    this.coverImageUrl = '';
+    this.coverBase64 = '';
+    if (this.isEditMode && this.novelId) {
+      this.updateNovel(this.currentStatus, false);
+    }
   }
 
   addChapter() {
@@ -373,7 +391,6 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
       }
     }
   }
-
 
   addComment(content: string) {
     if (!this.activeChapter || !content.trim()) return;
