@@ -1,9 +1,10 @@
+// writer.ts
 import { Component, OnInit, ChangeDetectorRef, HostListener, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, Router, ActivatedRoute, NavigationEnd } from '@angular/router';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { UserService } from '../service/user.service';
-import { filter, Subscription } from 'rxjs';
+import { filter, Subscription, firstValueFrom } from 'rxjs';
 
 interface Novel {
   id: number;
@@ -76,14 +77,12 @@ export class WriterComponent implements OnInit, OnDestroy {
     
     this.fetchMyNovels();
     
-    // ✅ auto-refresh ทุก 30 วินาที
     this.refreshInterval = setInterval(() => {
       if (this.router.url.includes('/writer')) {
         this.fetchMyNovels();
       }
     }, 30000);
     
-    // ✅ refresh เมื่อกลับมาหน้านี้
     this.router.events.subscribe(event => {
       if (event instanceof NavigationEnd && event.url === '/writer') {
         this.refreshData();
@@ -118,7 +117,7 @@ export class WriterComponent implements OnInit, OnDestroy {
     this.cdr.detectChanges();
   }
 
-  fetchMyNovels() {
+  async fetchMyNovels() {
     const token = localStorage.getItem('token');
     if (!token) {
       this.router.navigate(['/auth']);
@@ -127,39 +126,55 @@ export class WriterComponent implements OnInit, OnDestroy {
 
     this.loading = true;
     
-    this.http.get<any[]>(`${this.apiUrl}/novels/my_novels`, { headers: this.getHeaders() })
-      .subscribe({
-        next: (res) => {
-          this.novels = res.map(novel => ({
-            id: novel.id,
-            title: novel.title,
-            description: novel.description || '',
-            pen_name: novel.pen_name,
-            cover_path: novel.cover_path,
-            status: novel.status || 'draft',
-            chapters_count: novel.chapters_count || 0,
-            views: novel.views || 0,
-            likes: novel.likes || 0,
-            created_at: novel.created_at,
-            updated_at: novel.updated_at,
-            genres: novel.genres || []
-          }));
-          
-          this.updateCounts();
-          this.loading = false;
-          this.cdr.detectChanges();
-        },
-        error: (err) => {
-          console.error('Error fetching novels:', err);
-          this.loading = false;
-          this.cdr.detectChanges();
-          
-          if (err.status === 401) {
-            localStorage.removeItem('token');
-            this.router.navigate(['/auth']);
+    try {
+      const novels: any[] = await firstValueFrom(
+        this.http.get<any[]>(`${this.apiUrl}/novels/my_novels`, { headers: this.getHeaders() })
+      );
+      
+      // ดึงยอดไลค์รวมของแต่ละนิยายจากทุก chapter
+      const novelsWithTotalLikes = await Promise.all(
+        novels.map(async (novel) => {
+          try {
+            const chapters: any[] = await firstValueFrom(
+              this.http.get<any[]>(`${this.apiUrl}/novels/${novel.id}/chapters`, { headers: this.getHeaders() })
+            );
+            const totalLikes = chapters.reduce((sum, ch) => sum + (ch.like_count || 0), 0);
+            return { ...novel, likes: totalLikes };
+          } catch (error) {
+            console.error(`Error fetching chapters for novel ${novel.id}:`, error);
+            return { ...novel, likes: 0 };
           }
-        }
-      });
+        })
+      );
+      
+      this.novels = novelsWithTotalLikes.map(novel => ({
+        id: novel.id,
+        title: novel.title,
+        description: novel.description || '',
+        pen_name: novel.pen_name,
+        cover_path: novel.cover_path,
+        status: novel.status || 'draft',
+        chapters_count: novel.chapters_count || 0,
+        views: novel.views || 0,
+        likes: novel.likes || 0,
+        created_at: novel.created_at,
+        updated_at: novel.updated_at,
+        genres: novel.genres || []
+      }));
+      
+      this.updateCounts();
+      this.loading = false;
+      this.cdr.detectChanges();
+    } catch (err: any) {
+      console.error('Error fetching novels:', err);
+      this.loading = false;
+      this.cdr.detectChanges();
+      
+      if (err.status === 401) {
+        localStorage.removeItem('token');
+        this.router.navigate(['/auth']);
+      }
+    }
   }
 
   updateCounts() {
