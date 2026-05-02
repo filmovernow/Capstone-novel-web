@@ -1,3 +1,73 @@
-/* You can add global styles to this file, and also import other style files */
-
+/* styles.css */
 @import 'tailwindcss';
+
+/* ✅ line-clamp ทั้งหมด */
+.line-clamp-1 {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.line-clamp-4 {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ✅ ป้องกันชื่อยาวเกินใน grid */
+.break-word {
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+/* ✅ word break สำหรับข้อความยาว */
+.break-word {
+  word-break: break-word;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+}
+
+/* ✅ สำหรับ novel content */
+.novel-content {
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.novel-content img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ✅ scrollbar สำหรับสารบัญ */
+.overflow-y-auto::-webkit-scrollbar {
+  width: 4px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+  background: #1D267D;
+  border-radius: 4px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: #5C469C;
+  border-radius: 4px;
+}

@@ -84,10 +84,10 @@
 
   <div class="mx-auto grid max-w-[1100px] grid-cols-[220px_1fr_220px] gap-0 px-4 py-8">
     
-    <!-- Sidebar สารบัญ -->
+    <!-- Sidebar สารบัญ (แก้ชื่อตอนยาว) -->
     <aside class="sticky top-[72px] self-start pr-4">
       <h3 class="mb-3 text-[11px] font-bold uppercase tracking-widest text-[#7B6FA0]">สารบัญ</h3>
-      <div class="space-y-1">
+      <div class="space-y-1 max-h-[calc(100vh-120px)] overflow-y-auto pr-1">
         <div *ngFor="let ch of chapters" 
             (click)="!ch.isDisabled ? setActiveChapter(ch.id) : showUnlockModal(ch)"
             [ngClass]="{
@@ -98,19 +98,17 @@
             }"
             class="flex cursor-pointer items-center gap-3 rounded-xl p-2 text-xs transition-all">
           
-          <!-- หมายเลขตอน -->
           <span class="flex h-5 w-5 shrink-0 items-center justify-center text-[11px] font-medium"
                 [class.text-white]="activeChapterId === ch.id"
                 [class.text-inherit]="activeChapterId !== ch.id">
-            {{ch.id}}
+            {{ch.id === 0 ? 'นำ' : ch.id}}
           </span>
           
-          <!-- ชื่อตอน -->
-          <span class="line-clamp-1 flex-1" [class.text-[#5C469C]]="ch.isDisabled">{{ch.title}}</span>
+          <!-- ✅ ชื่อตอน ตัด 2 บรรทัด + word-break -->
+          <span class="line-clamp-2 flex-1 break-word" [class.text-[#5C469C]]="ch.isDisabled">{{ch.title}}</span>
           
-          <!-- ป้ายราคาและล็อค -->
-          <span *ngIf="ch.needsPurchase" class="text-[8px] text-[#D4ADFC] shrink-0 bg-[#5C469C]/30 px-1.5 py-0.5 rounded-full">
-            💰{{ch.price}}🔒
+          <span *ngIf="ch.needsPurchase" class="text-[8px] text-[#D4ADFC] shrink-0 bg-[#5C469C]/30 px-1.5 py-0.5 rounded-full whitespace-nowrap">
+            💰{{ch.price}}
           </span>
           <span *ngIf="ch.isDisabled && !ch.needsPurchase" class="text-[8px] text-[#5C469C] shrink-0">🔒</span>
         </div>
@@ -120,10 +118,11 @@
     <!-- ส่วนเนื้อหา -->
     <article class="border-x border-[#5C469C]/20 px-8">
       <header class="mb-8">
-        <span class="mb-3 inline-block rounded-full border border-[#D4ADFC]/20 bg-[#5C469C]/35 px-3 py-1 text-[11px]">ตอนที่ {{activeChapterId}}</span>
-        <h1 class="mb-3 text-2xl font-medium text-white">{{currentChapter?.title}}</h1>
+        <span class="mb-3 inline-block rounded-full border border-[#D4ADFC]/20 bg-[#5C469C]/35 px-3 py-1 text-[11px]">ตอนที่ {{activeChapterId === 0 ? 'นำ' : activeChapterId}}</span>
+        <!-- ✅ ชื่อตอน featured -->
+        <h1 class="mb-3 text-2xl font-medium text-white break-word line-clamp-3">{{currentChapter?.title}}</h1>
         <div class="flex flex-wrap items-center gap-4 text-xs text-[#7B6FA0]">
-          <span>{{ authorName }}</span>
+          <span class="break-word">{{ authorName }}</span>
           <span class="h-1 w-1 rounded-full bg-[#5C469C]/60"></span>
           <span>{{ wordCount }} ตัวอักษร</span>
           
@@ -141,7 +140,7 @@
       </header>
 
       <div class="mb-7 flex flex-wrap items-center gap-2 rounded-xl border border-[#5C469C]/30 bg-[#1D267D]/60 p-3">
-        <span class="text-[11px] text-[#7B6FA0]">ขนาด</span>
+        <span class="text-[11px] text-[#7B6FA0] shrink-0">ขนาด</span>
         <button (click)="changeFontSize(-2)" class="h-7 w-8 rounded-md border border-[#5C469C]/40 hover:bg-[#5C469C]/30 transition-colors text-xs text-[#D4ADFC]">A-</button>
         <span class="min-w-[20px] text-center text-xs">{{fontSize}}</span>
         <button (click)="changeFontSize(2)" class="h-7 w-8 rounded-md border border-[#5C469C]/40 hover:bg-[#5C469C]/30 transition-colors text-xs text-[#D4ADFC]">A+</button>
@@ -151,7 +150,7 @@
         [style.font-size.px]="fontSize" 
         style="font-family: Georgia, 'Sarabun', serif;">
       
-        <div class="novel-content" [innerHTML]="safeContent"></div>
+        <div class="novel-content break-word" [innerHTML]="safeContent"></div>
         
         <div class="my-6 flex items-center gap-3 text-[#D4ADFC]/30 text-xs">
           <div class="h-px flex-1 bg-[#5C469C]/25"></div>
@@ -160,17 +159,17 @@
         </div>
       </div>
 
-      <!-- ปุ่มถัดไป/ก่อนหน้า -->
+      <!-- ✅ ปุ่ม next/prev แก้เงื่อนไขให้เข้าใจง่าย -->
       <div class="mt-12 border-t border-[#5C469C]/25 pt-8">
         <div class="mb-8 flex gap-3">
           <button (click)="prevChapter()"
-                  [disabled]="pricingModel === 'one_time' && !hasAccessToNovel && activeChapterId === 0"
+                  [disabled]="isPrevDisabled()"
                   class="flex-1 rounded-xl border border-[#5C469C]/35 bg-[#1D267D]/50 p-4 text-left hover:bg-[#5C469C]/30 transition-all group disabled:opacity-50 disabled:cursor-not-allowed">
             <span class="block text-[10px] text-[#7B6FA0] group-hover:text-[#D4ADFC]">← ก่อนหน้า</span>
             <span class="text-sm font-medium text-white">ย้อนกลับ</span>
           </button>
           <button (click)="nextChapter()"
-                  [disabled]="pricingModel === 'one_time' && !hasAccessToNovel && activeChapterId === 0"
+                  [disabled]="isNextDisabled()"
                   class="flex-1 rounded-xl border border-[#5C469C]/35 bg-[#1D267D]/50 p-4 text-right hover:bg-[#5C469C]/30 transition-all group disabled:opacity-50 disabled:cursor-not-allowed">
             <span class="block text-[10px] text-[#7B6FA0] group-hover:text-[#D4ADFC]">ถัดไป →</span>
             <span class="text-sm font-medium text-white">อ่านต่อ</span>
@@ -179,13 +178,14 @@
       </div>
     </article>
 
-    <!-- Sidebar ขวา -->
+    <!-- Sidebar ขวา (แก้ชื่อนิยายยาว) -->
     <aside class="sticky top-[72px] self-start pl-4 space-y-4">
       <div class="rounded-2xl border border-[#5C469C]/30 bg-[#1D267D]/45 p-4">
         <div class="mb-3 text-[11px] font-bold uppercase tracking-widest text-[#7B6FA0]">เกี่ยวกับนิยาย</div>
         <img *ngIf="coverPath" [src]="coverPath" class="w-full rounded-xl object-cover mb-3"/>
-        <h4 class="text-sm font-medium text-white">{{ novelTitle }}</h4>
-        <p class="text-[11px] text-[#7B6FA0]">โดย <span>{{ authorName }}</span></p>
+        <!-- ✅ ชื่อนิยาย ตัด 2 บรรทัด -->
+        <h4 class="text-sm font-medium text-white line-clamp-2 break-word">{{ novelTitle }}</h4>
+        <p class="text-[11px] text-[#7B6FA0] break-word">โดย <span>{{ authorName }}</span></p>
         
         <button (click)="toggleFollow()"
                 class="mt-3 w-full rounded-lg border py-2 text-xs font-medium transition-all"
@@ -197,14 +197,13 @@
           <span class="text-[10px] opacity-70">({{ followCount }})</span>
         </button>
         
-        <!-- ปุ่มซื้อนิยายถาวร -->
         <button *ngIf="novelPrice > 0 && !hasPurchasedNovel && currentUser && currentUser.id !== novelAuthorId"
                 (click)="openPurchaseNovelConfirm()"
                 class="mt-2 w-full rounded-lg bg-gradient-to-r from-[#D4ADFC] to-[#B085E8] py-2 text-xs font-bold text-[#0C134F] hover:opacity-90 transition-all">
           🪙 ซื้อนิยายถาวร {{ novelPrice }} เหรียญ
         </button>
         
-        <div *ngIf="hasPurchasedNovel" class="mt-2 text-center text-[10px] text-green-400 bg-green-500/10 py-1.5 rounded-lg">
+        <div *ngIf="hasPurchasedNovel" class="mt-2 text-center text-[10px] text-green-400 bg-green-500/10 py-1.5 rounded-lg break-word">
           ✅ คุณซื้อนิยายเรื่องนี้แล้ว อ่านได้ทุกตอน
         </div>
         
@@ -222,13 +221,14 @@
 
   </div>
 
-  <!-- Modal ยืนยันปลดล็อคตอน (ซื้อรายตอน) -->
+  <!-- Modal ยืนยันปลดล็อคตอน -->
   <div *ngIf="showUnlockConfirmModal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm">
-    <div class="w-full max-w-md rounded-2xl bg-[#1D267D] border border-[#5C469C] p-6 shadow-2xl transform transition-all">
+    <div class="w-full max-w-md rounded-2xl bg-[#1D267D] border border-[#5C469C] p-6 shadow-2xl transform transition-all mx-4">
       <div class="text-center">
         <div class="text-5xl mb-4">🔒</div>
         <h3 class="text-xl font-semibold text-white mb-2">ปลดล็อคตอน</h3>
-        <p class="text-[#7B6FA0] text-sm mb-4">
+        <!-- ✅ ตัดข้อความใน modal -->
+        <p class="text-[#7B6FA0] text-sm mb-4 break-word line-clamp-3">
           คุณต้องการปลดล็อคตอน <span class="text-white font-semibold">{{unlockTargetChapter?.title}}</span> 
           เพื่ออ่านเนื้อหาเต็ม ใช่หรือไม่?
         </p>
@@ -248,7 +248,7 @@
           </div>
         </div>
         
-        <div class="flex gap-3">
+        <div class="flex gap-3 flex-wrap">
           <button (click)="closeUnlockConfirmModal()"
                   class="flex-1 rounded-xl border border-[#5C469C] py-3 text-[#7B6FA0] hover:bg-[#5C469C]/20 transition-colors">
             ยกเลิก
@@ -271,11 +271,12 @@
 
   <!-- Modal ยืนยันซื้อนิยายถาวร -->
   <div *ngIf="showPurchaseNovelConfirm" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm">
-    <div class="w-full max-w-md rounded-2xl bg-[#1D267D] border border-[#5C469C] p-6 shadow-2xl transform transition-all">
+    <div class="w-full max-w-md rounded-2xl bg-[#1D267D] border border-[#5C469C] p-6 shadow-2xl transform transition-all mx-4">
       <div class="text-center">
         <div class="text-5xl mb-4">💰</div>
         <h3 class="text-xl font-semibold text-white mb-2">ซื้อนิยายถาวร</h3>
-        <p class="text-[#7B6FA0] text-sm mb-4">
+        <!-- ✅ ตัดชื่อนิยายใน modal -->
+        <p class="text-[#7B6FA0] text-sm mb-4 break-word line-clamp-2">
           คุณต้องการซื้อนิยาย <span class="text-white font-semibold">{{novelTitle}}</span> 
           แบบถาวร ราคา <span class="text-[#D4ADFC] font-bold">{{novelPrice}} เหรียญ</span> ใช่หรือไม่?
         </p>
@@ -293,7 +294,7 @@
           </div>
         </div>
         
-        <div class="flex gap-3">
+        <div class="flex gap-3 flex-wrap">
           <button (click)="closePurchaseNovelConfirm()"
                   class="flex-1 rounded-xl border border-[#5C469C] py-3 text-[#7B6FA0] hover:bg-[#5C469C]/20 transition-colors">
             ยกเลิก

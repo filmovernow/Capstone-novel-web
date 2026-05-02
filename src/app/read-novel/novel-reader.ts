@@ -358,6 +358,35 @@ export class NovelReaderComponent implements OnInit, OnDestroy {
     }
   }
 
+  // เพิ่ม method เหล่านี้เข้าไปใน NovelReaderComponent
+
+  isPrevDisabled(): boolean {
+    // ถ้าเป็นบทนำ (id=0) และยังไม่ได้ซื้อแบบ one_time ให้ disable
+    if (this.activeChapterId === 0) {
+      if (this.pricingModel === 'one_time' && !this.hasAccessToNovel && this.novelPrice > 0) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  isNextDisabled(): boolean {
+    const currentIndex = this.chapters.findIndex(c => c.id === this.activeChapterId);
+    const nextChap = currentIndex < this.chapters.length - 1 ? this.chapters[currentIndex + 1] : null;
+    
+    // ถ้าตอนต่อไปต้องซื้อ (per_chapter) แต่ยังไม่ได้ซื้อ
+    if (nextChap?.needsPurchase) {
+      return true;
+    }
+    
+    // ถ้าเป็น one_time ยังไม่ได้ซื้อ และพยายามไปตอนอื่นที่ไม่ใช่บทนำ
+    if (this.pricingModel === 'one_time' && !this.hasAccessToNovel && this.novelPrice > 0) {
+      return true;
+    }
+    
+    return false;
+  }
+
   saveReadingHistory(chapterNo: number) {
     if (!this.currentUser) {
       console.log('⚠️ ไม่ได้ login ไม่บันทึก history');

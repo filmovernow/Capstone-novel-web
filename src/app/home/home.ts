@@ -138,6 +138,22 @@ export class Home implements OnInit {
     return value.toString();
   }
 
+  // ✅ ตัดข้อความ
+  truncateTextByLines(text: string, maxLines: number = 3): string {
+    if (!text) return 'ไม่มีคำอธิบาย';
+    
+    // 估算: 1 บรรทัด ~ 50-60 ตัวอักษร (ขึ้นอยู่กับความกว้าง)
+    const estimatedCharsPerLine = 55;
+    const maxChars = maxLines * estimatedCharsPerLine;
+    
+    if (text.length <= maxChars) return text;
+    
+    // ตัดที่คำเต็มๆ
+    const truncated = text.substring(0, maxChars);
+    const lastSpace = truncated.lastIndexOf(' ');
+    return (lastSpace > 0 ? truncated.substring(0, lastSpace) : truncated) + '...';
+  }
+
   get displayBooks() {
     if (this.showAllBooks) {
       return this.filteredBooks;
