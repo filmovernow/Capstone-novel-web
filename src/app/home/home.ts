@@ -7,6 +7,7 @@ import { UserService } from '../service/user.service';
 import { ChangeDetectorRef } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { NumberPipe } from './number.pipe';
+import { NavbarComponent } from '../components/navbar/navbar'; // ✅ เพิ่ม import NavbarComponent
 
 interface Novel {
   id: number;
@@ -24,9 +25,8 @@ interface Novel {
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, NumberPipe],
+  imports: [CommonModule, FormsModule, RouterLink, NumberPipe, NavbarComponent], // ✅ เพิ่ม NavbarComponent ใน imports
   templateUrl: './home.html',
-  styleUrl: './home.css'
 })
 export class Home implements OnInit {
 
@@ -60,15 +60,19 @@ export class Home implements OnInit {
   ngOnInit() {
     this.userService.loadProfile();
     
-    this.userService.currentUser$.subscribe({
-      next: (user: any) => {
-        this.currentUser = user;
-        this.cdr.detectChanges();
-      },
-      error: () => {
-        this.currentUser = null;
-        this.cdr.detectChanges();
+    this.userService.currentUser$.subscribe(user => {
+      if (!user) return;
+      
+      // ✅ แก้ตรงนี้: เพิ่ม timestamp ให้ avatar_path
+      if (user.avatar_path) {
+        // ถ้ายังไม่มี timestamp ให้เพิ่ม
+        if (!user.avatar_path.includes('?t=')) {
+          user.avatar_path = `${user.avatar_path}?t=${Date.now()}`;
+        }
       }
+      
+      this.currentUser = user;
+      this.cdr.detectChanges();
     });
     
     this.http.get<{genres: string[]}>(`${this.apiUrl}/novels/genres`).subscribe({
@@ -88,6 +92,12 @@ export class Home implements OnInit {
     });
   }
 
+  // ✅ เพิ่ม method นี้ สำหรับรับค่าค้นหาจาก navbar
+  onNavbarSearch(searchTerm: string) {
+    this.search = searchTerm;
+    this.onSearch();
+  }
+  
   logout() {
     this.userService.logout();
     this.router.navigate(['/auth']);
@@ -95,6 +105,15 @@ export class Home implements OnInit {
 
   get filteredBooks() {
     let result = [...this.books];
+
+    // ✅ เพิ่ม logic ค้นหาจาก search term
+    if (this.search && this.search.trim()) {
+      const q = this.search.trim().toLowerCase();
+      result = result.filter(b =>
+        b.title.toLowerCase().includes(q) ||
+        (b.pen_name || '').toLowerCase().includes(q)
+      );
+    }
 
     if (this.selectedGenre) {
       result = result.filter(book => 

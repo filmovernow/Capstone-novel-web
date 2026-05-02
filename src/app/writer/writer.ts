@@ -1,9 +1,9 @@
-import { Component, OnInit, ChangeDetectorRef, HostListener } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, HostListener, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, Router, ActivatedRoute, NavigationEnd } from '@angular/router';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { UserService } from '../service/user.service';
-import { filter } from 'rxjs/operators';
+import { filter, Subscription } from 'rxjs';
 
 interface Novel {
   id: number;
@@ -26,14 +26,13 @@ interface Novel {
   imports: [CommonModule, RouterLink],
   templateUrl: './writer.html',
 })
-export class WriterComponent implements OnInit {
+export class WriterComponent implements OnInit, OnDestroy {
 
   selectedTab = 'all';
   novels: Novel[] = [];
   loading = true;
   apiUrl = 'http://localhost:3000/api/v1';
 
-  // Navbar properties
   scrolled = false;
   profileOpen = false;
   currentUser: any = null;
@@ -52,30 +51,53 @@ export class WriterComponent implements OnInit {
     { icon: '✍️', value: '0', label: 'ตอนที่เขียนแล้ว' },
   ];
 
+  private userSubscription: Subscription | null = null;
+  private refreshInterval: any = null;
+
   constructor(
     private http: HttpClient,
     private router: Router,
     private route: ActivatedRoute,
     private userService: UserService,
     private cdr: ChangeDetectorRef
-  ) {
-    this.userService.currentUser$.subscribe(user => {
-      this.currentUser = user;
-      this.cdr.detectChanges();
+  ) {}
+
+  ngOnInit() {
+    this.userService.loadProfile();
+    this.userSubscription = this.userService.currentUser$.subscribe({
+      next: (user) => {
+        this.currentUser = user;
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.currentUser = null;
+      }
+    });
+    
+    this.fetchMyNovels();
+    
+    // ✅ auto-refresh ทุก 30 วินาที
+    this.refreshInterval = setInterval(() => {
+      if (this.router.url.includes('/writer')) {
+        this.fetchMyNovels();
+      }
+    }, 30000);
+    
+    // ✅ refresh เมื่อกลับมาหน้านี้
+    this.router.events.subscribe(event => {
+      if (event instanceof NavigationEnd && event.url === '/writer') {
+        this.refreshData();
+      }
     });
   }
 
-  ngOnInit() {
-    this.fetchMyNovels();
-    
-    this.router.events.pipe(
-      filter(event => event instanceof NavigationEnd)
-    ).subscribe(() => {
-      if (this.router.url.includes('/writer')) {
-        console.log('🔄 Refreshing novels...');
-        this.fetchMyNovels();
-      }
-    });
+  ngOnDestroy() {
+    if (this.userSubscription) {
+      this.userSubscription.unsubscribe();
+    }
+    if (this.refreshInterval) {
+      clearInterval(this.refreshInterval);
+    }
   }
 
   getHeaders() {
@@ -83,21 +105,31 @@ export class WriterComponent implements OnInit {
     return new HttpHeaders().set('Authorization', `Bearer ${token}`);
   }
 
+  formatNumber(value: number): string {
+    if (value === undefined || value === null) return '0';
+    if (value >= 1000000) return (value / 1000000).toFixed(1) + 'M';
+    if (value >= 1000) return (value / 1000).toFixed(1) + 'K';
+    return value.toString();
+  }
+
+  refreshData() {
+    this.fetchMyNovels();
+    this.userService.loadProfile();
+    this.cdr.detectChanges();
+  }
+
   fetchMyNovels() {
     const token = localStorage.getItem('token');
     if (!token) {
-      console.log('No token found, redirecting to auth...');
       this.router.navigate(['/auth']);
       return;
     }
 
     this.loading = true;
-    this.cdr.detectChanges();
     
     this.http.get<any[]>(`${this.apiUrl}/novels/my_novels`, { headers: this.getHeaders() })
       .subscribe({
         next: (res) => {
-          console.log('My novels:', res);
           this.novels = res.map(novel => ({
             id: novel.id,
             title: novel.title,
@@ -120,14 +152,12 @@ export class WriterComponent implements OnInit {
         error: (err) => {
           console.error('Error fetching novels:', err);
           this.loading = false;
+          this.cdr.detectChanges();
           
-          // ✅ ถ้า error 401 (unauthorized) ให้ logout และ redirect
           if (err.status === 401) {
-            console.log('Token expired or invalid, logging out...');
             localStorage.removeItem('token');
             this.router.navigate(['/auth']);
           }
-          this.cdr.detectChanges();
         }
       });
   }
@@ -149,20 +179,11 @@ export class WriterComponent implements OnInit {
     const totalChapters = this.novels.reduce((sum, n) => sum + (n.chapters_count || 0), 0);
 
     this.stats = [
-      { icon: '📖', value: String(this.novels.length), label: 'นิยายทั้งหมด' },
+      { icon: '📖', value: this.formatNumber(this.novels.length), label: 'นิยายทั้งหมด' },
       { icon: '👁', value: this.formatNumber(totalViews), label: 'ยอดวิวรวม' },
       { icon: '❤️', value: this.formatNumber(totalLikes), label: 'ยอดถูกใจรวม' },
-      { icon: '✍️', value: String(totalChapters), label: 'ตอนที่เขียนแล้ว' },
+      { icon: '✍️', value: this.formatNumber(totalChapters), label: 'ตอนที่เขียนแล้ว' },
     ];
-    
-    this.cdr.detectChanges();
-  }
-
-  formatNumber(num: number): string {
-    if (num >= 1000) {
-      return (num / 1000).toFixed(1) + 'K';
-    }
-    return String(num);
   }
 
   get filteredNovels(): Novel[] {
@@ -197,6 +218,7 @@ export class WriterComponent implements OnInit {
 
   toggleProfile() {
     this.profileOpen = !this.profileOpen;
+    this.cdr.detectChanges();
   }
 
   logout() {
@@ -209,9 +231,12 @@ export class WriterComponent implements OnInit {
       this.http.delete(`${this.apiUrl}/novels/${id}`, { headers: this.getHeaders() })
         .subscribe({
           next: () => {
-            this.fetchMyNovels();
+            this.refreshData();
           },
-          error: (err) => console.error('Error deleting novel:', err)
+          error: (err) => {
+            console.error('Error deleting novel:', err);
+            alert('ลบไม่สำเร็จ: ' + (err.error?.error || 'เกิดข้อผิดพลาด'));
+          }
         });
     }
   }
@@ -234,6 +259,7 @@ export class WriterComponent implements OnInit {
     const target = e.target as HTMLElement;
     if (!target.closest('#profile-wrapper')) {
       this.profileOpen = false;
+      this.cdr.detectChanges();
     }
   }
 }

@@ -3,9 +3,9 @@
   <nav class="sticky top-0 z-50 flex h-16 items-center justify-between border-b border-[#1D267D] bg-[#0C134F]/90 backdrop-blur px-6">
 
     <div class="flex items-center gap-4">
-      <a routerLink="/" class="text-[#7B6FA0] hover:text-[#D4ADFC] text-sm transition-colors">
+      <button (click)="goBack()" class="text-[#7B6FA0] hover:text-[#D4ADFC] text-sm transition-colors flex items-center gap-1">
         ← กลับ
-      </a>
+      </button>
     </div>
 
     <div class="absolute left-1/2 -translate-x-1/2 text-center">
@@ -29,16 +29,40 @@
           <span class="text-[#7B6FA0]">▾</span>
         </button>
 
-        <div *ngIf="profileOpen" class="absolute right-0 top-full mt-2 w-56 bg-[#1D267D] border border-[#5C469C]/50 rounded-2xl shadow-2xl overflow-hidden z-50">
-          <div class="px-4 py-3 border-b border-[#5C469C]/30">
-            <p class="text-sm text-white">{{ currentUser?.username }}</p>
-            <p class="text-xs text-[#7B6FA0]">{{ currentUser?.email }}</p>
+        <div *ngIf="profileOpen" class="absolute right-0 top-full mt-2 w-64 bg-[#1D267D] border border-[#5C469C]/50 rounded-2xl shadow-2xl overflow-hidden z-50">
+          
+          <div class="px-4 py-3 border-b border-[#5C469C]/30 flex items-center gap-3">
+            <img *ngIf="currentUser?.avatar_path; else fallback" [src]="currentUser.avatar_path" class="w-8 h-8 rounded-full object-cover" />
+            <ng-template #fallback>
+              <div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#5C469C] to-[#D4ADFC] flex items-center justify-center text-sm font-bold text-[#0C134F]">
+                {{currentUser?.username ? currentUser.username[0] : 'น'}}
+              </div>
+            </ng-template>
+            <div>
+              <p class="text-sm text-white">{{ currentUser?.username }}</p>
+              <p class="text-xs text-[#7B6FA0]">{{ currentUser?.email }}</p>
+            </div>
           </div>
+
+          <div class="px-4 py-2 bg-gradient-to-r from-[#5C469C]/30 to-[#1D267D] border-b border-[#5C469C]/30">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-lg">🪙</span>
+                <span class="text-xs text-[#9B8CC4]">เหรียญของฉัน</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-lg font-bold text-[#D4ADFC]">{{ formatNumber(currentUser?.coin_balance || 0) }}</span>
+                <a routerLink="/topup" class="text-xs bg-[#D4ADFC] text-[#0C134F] px-2 py-0.5 rounded-full hover:bg-[#B085E8] transition-colors">+ เติม</a>
+              </div>
+            </div>
+          </div>
+
           <div class="py-1.5">
             <a routerLink="/writer" class="block px-4 py-2 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30" style="text-decoration:none">✍️ เขียนนิยาย</a>
             <a routerLink="/storage" class="block px-4 py-2 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30" style="text-decoration:none">📦 คลังของฉัน</a>
             <a routerLink="/settings" class="block px-4 py-2 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30" style="text-decoration:none">⚙️ ตั้งค่า</a>
           </div>
+
           <div class="border-t border-[#5C469C]/30 py-1.5">
             <button (click)="logout()" class="w-full text-left px-4 py-2 text-sm text-[#ff9eb5] hover:bg-[#ff6f91]/10">🚪 ออกจากระบบ</button>
           </div>
@@ -71,6 +95,7 @@
             {{ch.id}}
           </span>
           <span class="line-clamp-1">{{ch.title}}</span>
+          <span *ngIf="ch.price && ch.price > 0 && !hasPurchasedNovel && activeChapterId !== ch.id" class="text-[8px] text-[#D4ADFC] shrink-0">🔒</span>
         </div>
       </div>
     </aside>
@@ -84,7 +109,6 @@
           <span class="h-1 w-1 rounded-full bg-[#5C469C]/60"></span>
           <span>{{ wordCount }} ตัวอักษร</span>
           
-          <!-- ✅ แสดงปุ่มไลค์เฉพาะตอนที่ไม่ใช่บทนำ (id !== 0) -->
           <button *ngIf="activeChapterId !== 0" 
                   (click)="toggleLike()" 
                   [disabled]="isLiking"
@@ -118,15 +142,18 @@
         </div>
       </div>
 
+      <!-- ปุ่มถัดไป/ก่อนหน้า - เพิ่ม disabled logic -->
       <div class="mt-12 border-t border-[#5C469C]/25 pt-8">
         <div class="mb-8 flex gap-3">
           <button (click)="prevChapter()"
-                  class="flex-1 rounded-xl border border-[#5C469C]/35 bg-[#1D267D]/50 p-4 text-left hover:bg-[#5C469C]/30 transition-all group">
+                  [disabled]="!hasAccessToNovel && activeChapterId === 0"
+                  class="flex-1 rounded-xl border border-[#5C469C]/35 bg-[#1D267D]/50 p-4 text-left hover:bg-[#5C469C]/30 transition-all group disabled:opacity-50 disabled:cursor-not-allowed">
             <span class="block text-[10px] text-[#7B6FA0] group-hover:text-[#D4ADFC]">← ก่อนหน้า</span>
             <span class="text-sm font-medium text-white">ย้อนกลับ</span>
           </button>
           <button (click)="nextChapter()"
-                  class="flex-1 rounded-xl border border-[#5C469C]/35 bg-[#1D267D]/50 p-4 text-right hover:bg-[#5C469C]/30 transition-all group">
+                  [disabled]="!hasAccessToNovel && activeChapterId === 0"
+                  class="flex-1 rounded-xl border border-[#5C469C]/35 bg-[#1D267D]/50 p-4 text-right hover:bg-[#5C469C]/30 transition-all group disabled:opacity-50 disabled:cursor-not-allowed">
             <span class="block text-[10px] text-[#7B6FA0] group-hover:text-[#D4ADFC]">ถัดไป →</span>
             <span class="text-sm font-medium text-white">อ่านต่อ</span>
           </button>
@@ -150,6 +177,21 @@
           {{ isFollowing ? '✅ ติดตามแล้ว' : '+ ติดตาม' }}
           <span class="text-[10px] opacity-70">({{ followCount }})</span>
         </button>
+        
+        <!-- ปุ่มซื้อนิยายถาวร -->
+        <button *ngIf="novelPrice > 0 && !hasPurchasedNovel && currentUser && currentUser.id !== novelAuthorId"
+                (click)="purchaseNovel()"
+                class="mt-2 w-full rounded-lg bg-gradient-to-r from-[#D4ADFC] to-[#B085E8] py-2 text-xs font-bold text-[#0C134F] hover:opacity-90 transition-all">
+          🪙 ซื้อนิยายถาวร {{ novelPrice }} เหรียญ
+        </button>
+        
+        <div *ngIf="hasPurchasedNovel" class="mt-2 text-center text-[10px] text-green-400 bg-green-500/10 py-1.5 rounded-lg">
+          ✅ คุณซื้อนิยายเรื่องนี้แล้ว อ่านได้ทุกตอน
+        </div>
+        
+        <div *ngIf="novelPrice > 0 && !hasPurchasedNovel && (!currentUser || currentUser.id === novelAuthorId)" class="mt-2 text-center text-[10px] text-[#7B6FA0]">
+          🔒 นิยายพรีเมียม ราคา {{ novelPrice }} เหรียญ
+        </div>
       </div>
 
       <div class="rounded-2xl border border-[#5C469C]/30 bg-[#1D267D]/45 p-4">
@@ -159,4 +201,60 @@
     </aside>
 
   </div>
+
+  <!-- Modal สำหรับปลดล็อคตอน / ซื้อนิยาย -->
+  <div *ngIf="showPurchaseModal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm">
+    <div class="w-full max-w-md rounded-2xl bg-[#1D267D] border border-[#5C469C] p-6 shadow-2xl transform transition-all">
+      <div class="text-center">
+        <div class="text-5xl mb-4">🔒</div>
+        <h3 class="text-xl font-semibold text-white mb-2">
+          {{ purchaseInfo?.type === 'novel' ? 'ซื้อนิยายถาวร' : 'ปลดล็อคตอน' }}
+        </h3>
+        <p class="text-[#7B6FA0] text-sm mb-4">
+          {{ purchaseInfo?.type === 'novel' ? 'ซื้อนิยายเรื่องนี้ครั้งเดียว อ่านได้ทุกตอน' : 'ปลดล็อคตอนนี้เพื่ออ่านเนื้อหาเต็ม' }}
+        </p>
+        
+        <div class="bg-[#0C134F]/50 rounded-xl p-4 mb-6">
+          <div class="flex justify-between items-center text-sm">
+            <span class="text-[#7B6FA0]">ราคา</span>
+            <span class="text-[#D4ADFC] font-bold text-xl">
+              {{ purchaseInfo?.price || 0 }} 🪙
+            </span>
+          </div>
+          <div class="flex justify-between items-center text-sm mt-2">
+            <span class="text-[#7B6FA0]">เหรียญของคุณ</span>
+            <span class="text-white" [class.text-red-400]="(currentUser?.coin_balance || 0) < (purchaseInfo?.price || 0)">
+              {{ formatNumber(currentUser?.coin_balance || 0) }} 🪙
+            </span>
+          </div>
+        </div>
+        
+        <div class="flex gap-3">
+          <button (click)="closePurchaseModal()"
+                  class="flex-1 rounded-xl border border-[#5C469C] py-3 text-[#7B6FA0] hover:bg-[#5C469C]/20 transition-colors">
+            ยกเลิก
+          </button>
+          <button *ngIf="purchaseInfo?.type === 'novel'"
+                  (click)="purchaseNovel()"
+                  [disabled]="isPurchasing || (currentUser?.coin_balance || 0) < (purchaseInfo?.price || 0)"
+                  class="flex-1 rounded-xl bg-gradient-to-r from-[#D4ADFC] to-[#B085E8] py-3 font-semibold text-[#0C134F] hover:opacity-90 transition-all disabled:opacity-50">
+            {{ isPurchasing ? 'กำลังดำเนินการ...' : '✅ ซื้อเลย' }}
+          </button>
+          <button *ngIf="purchaseInfo?.type === 'chapter'"
+                  (click)="unlockChapter()"
+                  [disabled]="isPurchasing || (currentUser?.coin_balance || 0) < (purchaseInfo?.price || 0)"
+                  class="flex-1 rounded-xl bg-gradient-to-r from-[#D4ADFC] to-[#B085E8] py-3 font-semibold text-[#0C134F] hover:opacity-90 transition-all disabled:opacity-50">
+            {{ isPurchasing ? 'กำลังดำเนินการ...' : '🔓 ปลดล็อค' }}
+          </button>
+        </div>
+        
+        <button *ngIf="(currentUser?.coin_balance || 0) < (purchaseInfo?.price || 0)"
+                (click)="goToTopup()"
+                class="mt-4 text-sm text-[#D4ADFC] hover:underline">
+          ➕ เติมเหรียญ
+        </button>
+      </div>
+    </div>
+  </div>
+
 </div>

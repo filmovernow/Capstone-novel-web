@@ -12,7 +12,6 @@
         </span>
       </div>
       <div class="flex items-center gap-3">
-        <!-- แสดงสถานะปัจจุบัน -->
         <span class="text-xs px-2 py-1 rounded-full" 
               [ngClass]="{
                 'bg-yellow-500/20 text-yellow-300': currentStatus === 'writing',
@@ -109,6 +108,53 @@
           </div>
         </div>
 
+        <!-- ส่วนเลือกรูปแบบการขาย 4 แบบ -->
+        <div class="space-y-3 pt-2 border-t border-[#5C469C]/30">
+          <label class="text-xs font-semibold text-[#9B8CC4] uppercase tracking-wide">
+            💰 รูปแบบการขาย
+          </label>
+          
+          <div class="space-y-2">
+            <label class="flex items-start gap-3 p-3 bg-[#0C134F]/40 rounded-xl border border-[#5C469C]/30 cursor-pointer hover:bg-[#5C469C]/20 transition-all">
+              <input type="radio" name="pricingModel" [(ngModel)]="pricingModel" value="one_time" class="mt-1">
+              <div class="flex-1">
+                <div class="font-semibold text-white text-sm">💰 ซื้อทั้งเล่ม</div>
+                <div class="text-xs text-[#7B6FA0]">จ่ายครั้งเดียว อ่านได้ทุกตอน</div>
+                <div *ngIf="pricingModel === 'one_time'" class="mt-2">
+                  <input type="number" [(ngModel)]="oneTimePrice" 
+                         placeholder="ราคา (เหรียญ)" min="1"
+                         class="w-40 bg-[#0C134F] border border-[#5C469C] rounded-lg px-3 py-1.5 text-sm text-white">
+                </div>
+              </div>
+            </label>
+
+            <label class="flex items-start gap-3 p-3 bg-[#0C134F]/40 rounded-xl border border-[#5C469C]/30 cursor-pointer hover:bg-[#5C469C]/20 transition-all">
+              <input type="radio" name="pricingModel" [(ngModel)]="pricingModel" value="early_access" class="mt-1">
+              <div class="flex-1">
+                <div class="font-semibold text-white text-sm">⏱️ ซื้ออ่านล่วงหน้า</div>
+                <div class="text-xs text-[#7B6FA0]">ตอนใหม่อ่านก่อนใคร (ตั้งราคาและวันปลดล็อคในแต่ละตอน)</div>
+              </div>
+            </label>
+
+            <label class="flex items-start gap-3 p-3 bg-[#0C134F]/40 rounded-xl border border-[#5C469C]/30 cursor-pointer hover:bg-[#5C469C]/20 transition-all">
+              <input type="radio" name="pricingModel" [(ngModel)]="pricingModel" value="free" class="mt-1">
+              <div class="flex-1">
+                <div class="font-semibold text-white text-sm">🎉 ฟรีทั้งหมด</div>
+                <div class="text-xs text-[#7B6FA0]">ทุกคนอ่านได้ฟรีทุกตอน</div>
+              </div>
+            </label>
+
+            <label class="flex items-start gap-3 p-3 bg-[#0C134F]/40 rounded-xl border border-[#5C469C]/30 cursor-pointer hover:bg-[#5C469C]/20 transition-all">
+              <input type="radio" name="pricingModel" [(ngModel)]="pricingModel" value="per_chapter" class="mt-1">
+              <div class="flex-1">
+                <div class="font-semibold text-white text-sm">📖 ซื้อทีละตอน</div>
+                <div class="text-xs text-[#7B6FA0]">จ่ายเฉพาะตอนที่อยากอ่าน (ตั้งราคาต่อตอนในแต่ละตอน)</div>
+                <!-- ✅ ลบ input ราคาออกไปแล้ว -->
+              </div>
+            </label>
+          </div>
+        </div>
+
         <div class="space-y-2">
           <label class="text-xs font-semibold text-[#9B8CC4] uppercase tracking-wide">ปกนิยาย</label>
           <div class="flex gap-3 items-start">
@@ -144,6 +190,7 @@
         </div>
       </div>
 
+      <!-- ส่วนเขียนตอน (ไม่มีรายละเอียดการตั้งค่าราคาตอน) -->
       <div *ngIf="activeChapter" class="bg-[#1D267D]/60 border border-[#5C469C]/30 rounded-2xl p-6 space-y-4">
         <h2 class="text-white font-semibold flex items-center gap-2">
           <span class="w-1 h-5 bg-[#D4ADFC] rounded-full inline-block"></span>
@@ -154,131 +201,133 @@
           placeholder="ชื่อตอน..."
           class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-xl px-4 py-3 text-white text-sm placeholder-[#7B6FA0] outline-none focus:border-[#D4ADFC] transition-all duration-200" />
 
+        <!-- ✅ เพิ่มส่วนตั้งค่าราคาตอน (แสดงตาม pricingModel ที่เลือก) -->
         <div class="bg-[#0C134F]/40 border border-[#5C469C]/30 rounded-xl p-4 space-y-3">
-          <button (click)="toggleMonetization()"
-            class="flex items-center justify-between w-full text-left">
-            <span class="text-xs font-semibold text-[#9B8CC4] flex items-center gap-2">💰 การตั้งค่าการเข้าถึง</span>
-            <span class="text-[#7B6FA0]">{{showMonetization ? '▼' : '▶'}}</span>
-          </button>
-          
-          <div *ngIf="showMonetization" class="space-y-3 pt-2">
-            <div class="flex gap-2">
-              <button (click)="setAccessType('free')"
-                [class]="activeChapter.accessType === 'free' ? 'flex-1 bg-[#5C469C] text-white text-[11px] px-2 py-2 rounded-lg transition-colors font-medium' : 'flex-1 bg-[#0C134F]/60 border border-[#5C469C]/50 text-[#9B8CC4] text-[11px] px-2 py-2 rounded-lg hover:bg-[#5C469C]/30 transition-colors font-medium'">
-                🆓 อ่านฟรี
-              </button>
-              <button (click)="setAccessType('paid')"
-                [class]="activeChapter.accessType === 'paid' ? 'flex-1 bg-[#5C469C] text-white text-[11px] px-2 py-2 rounded-lg transition-colors font-medium' : 'flex-1 bg-[#0C134F]/60 border border-[#5C469C]/50 text-[#9B8CC4] text-[11px] px-2 py-2 rounded-lg hover:bg-[#5C469C]/30 transition-colors font-medium'">
-                🪙 ซื้อถาวร
-              </button>
-              <button (click)="setAccessType('earlyAccess')"
-                [class]="activeChapter.accessType === 'earlyAccess' ? 'flex-1 bg-[#5C469C] text-white text-[11px] px-2 py-2 rounded-lg transition-colors font-medium' : 'flex-1 bg-[#0C134F]/60 border border-[#5C469C]/50 text-[#9B8CC4] text-[11px] px-2 py-2 rounded-lg hover:bg-[#5C469C]/30 transition-colors font-medium'">
-                ⏱️ อ่านล่วงหน้า
-              </button>
-            </div>
-            
-            <div *ngIf="activeChapter.accessType !== 'free'" class="space-y-3 pt-2 border-t border-[#5C469C]/30">
-              <div class="space-y-1.5">
-                <label class="text-[10px] text-[#9B8CC4]">{{ activeChapter.accessType === 'earlyAccess' ? 'ราคาอ่านล่วงหน้า (เหรียญ)' : 'ราคา (เหรียญ)' }}</label>
-                <input [(ngModel)]="activeChapter.price" name="chapterPrice" type="number" min="1"
-                  class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-lg px-3 py-2 text-white text-xs outline-none focus:border-[#D4ADFC] transition-all" />
-              </div>
-              
-              <div *ngIf="activeChapter.accessType === 'earlyAccess'" class="space-y-1.5">
-                <label class="text-[10px] text-[#9B8CC4]">วันที่เปิดให้อ่านฟรี</label>
-                <input [(ngModel)]="activeChapter.scheduledDate" name="scheduledDate" type="datetime-local"
-                  class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-lg px-3 py-2 text-white text-xs outline-none focus:border-[#D4ADFC] transition-all [color-scheme:dark]" />
-              </div>
-            </div>
+        <div class="text-xs font-semibold text-[#9B8CC4] flex items-center gap-2 mb-2">💰 การตั้งค่าตอนนี้</div>
+        
+        <!-- ซื้อทั้งเล่ม: ไม่ต้องตั้ง -->
+        <div *ngIf="pricingModel === 'one_time'" class="text-xs text-[#7B6FA0] p-2 bg-[#0C134F]/30 rounded-lg">
+          🔒 นิยายแบบซื้อทั้งเล่ม — ผู้อ่านจ่ายครั้งเดียวจะอ่านได้ทุกตอน
+        </div>
+        
+        <!-- ซื้อทีละตอน: ตั้งราคาตอน -->
+        <div *ngIf="pricingModel === 'per_chapter'" class="space-y-2">
+          <label class="text-xs text-[#9B8CC4]">💰 ราคาตอนนี้ (เหรียญ)</label>
+          <input type="number" [(ngModel)]="activeChapter.price" min="0"
+            placeholder="ราคาตอนนี้" 
+            class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-lg px-3 py-2 text-white text-sm">
+          <div class="text-[10px] text-[#7B6FA0]">
+            💡 ตอนที่ 1 แนะนำให้ตั้ง 0 เพื่อให้ผู้อ่านได้ทดลองอ่าน
           </div>
         </div>
-
-        <div class="relative flex flex-col shadow-lg rounded-xl overflow-hidden border border-[#5C469C]/50">
-          <editor 
-            apiKey="nefysckp0t6ow7fcnj43r4f8qb8n7yx16xy8qbsravd4qpoq" 
-            [(ngModel)]="activeChapter.content" 
-            [init]="editorConfig">
-          </editor>
+        
+        <!-- อ่านล่วงหน้า: ตั้งราคาและวันปลดล็อค -->
+        <div *ngIf="pricingModel === 'early_access'" class="space-y-3">
+          <div class="space-y-1.5">
+            <label class="text-xs text-[#9B8CC4]">💰 ราคาอ่านล่วงหน้า (เหรียญ)</label>
+            <input type="number" [(ngModel)]="activeChapter.earlyAccessPrice" min="1"
+              class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-lg px-3 py-2 text-white text-sm">
+          </div>
+          <div class="space-y-1.5">
+            <label class="text-xs text-[#9B8CC4]">📅 วันที่เปิดให้อ่านฟรี</label>
+            <input type="datetime-local" [(ngModel)]="activeChapter.freeDate"
+              class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-lg px-3 py-2 text-white text-sm [color-scheme:dark]">
+          </div>
+          <div class="text-[10px] text-[#7B6FA0]">⏰ ถึงวันที่นี้ ตอนนี้จะปลดล็อคให้ทุกคนอ่านฟรี</div>
         </div>
+        
+        <!-- ฟรี: ไม่ต้องตั้ง -->
+        <div *ngIf="pricingModel === 'free'" class="text-xs text-[#7B6FA0] p-2 bg-[#0C134F]/30 rounded-lg">
+          🎉 นิยายฟรี — ทุกคนอ่านได้ฟรี
+        </div>
+      </div>
 
-        <div class="flex justify-between items-center text-xs text-[#7B6FA0]">
+      <div class="relative flex flex-col shadow-lg rounded-xl overflow-hidden border border-[#5C469C]/50">
+        <editor 
+          apiKey="nefysckp0t6ow7fcnj43r4f8qb8n7yx16xy8qbsravd4qpoq" 
+          [(ngModel)]="activeChapter.content" 
+          [init]="editorConfig">
+        </editor>
+      </div>
+
+      <div class="flex justify-between items-center text-xs text-[#7B6FA0]">
           <button (click)="saveChapter()" class="text-[#D4ADFC] hover:text-[#B085E8] transition-colors ml-auto">💾 บันทึกตอนนี้</button>
         </div>
       </div>
 
       <div *ngIf="!activeChapter" class="bg-[#1D267D]/30 border border-dashed border-[#5C469C]/40 rounded-2xl p-12 text-center">
-        <div class="text-5xl mb-3 opacity-30">📄</div>
-        <p class="text-[#7B6FA0] text-sm">เลือกตอนจากด้านขวา หรือสร้างตอนใหม่เพื่อเริ่มเขียน</p>
-      </div>
-    </div>
-
-    <aside class="space-y-4 relative">
-      <div class="sticky top-24 space-y-4">
-        
-        <div class="bg-[#1D267D]/60 border border-[#5C469C]/30 rounded-2xl p-5">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="text-white font-semibold text-sm flex items-center gap-2">
-              <span class="w-1 h-4 bg-[#D4ADFC] rounded-full"></span>
-              รายการตอน
-            </h3>
-            <span class="text-xs text-[#7B6FA0]">{{chapters.length}} ตอน</span>
-          </div>
-
-          <div class="space-y-2 mb-4 max-h-[300px] overflow-y-auto pr-1">
-            <div *ngFor="let ch of chapters; let i = index"
-              (click)="selectChapter(ch)"
-              [class]="activeChapter?.id === ch.id
-                ? 'flex items-center gap-3 bg-[#5C469C]/50 border border-[#D4ADFC]/30 rounded-xl px-3 py-2.5 cursor-pointer transition-all'
-                : 'flex items-center gap-3 bg-[#0C134F]/40 border border-[#5C469C]/20 rounded-xl px-3 py-2.5 cursor-pointer hover:bg-[#5C469C]/20 hover:border-[#5C469C]/50 transition-all'">
-
-              <span class="text-xs font-bold text-[#7B6FA0] w-5 shrink-0">{{ch.order}}</span>
-              <div class="flex-1 min-w-0">
-                <p class="text-sm text-white truncate">{{ ch.title || 'ตอนที่ ' + ch.order }}</p>
-              </div>
-              <span [class]="ch.published ? 'w-2 h-2 rounded-full bg-[#72f5c8] shrink-0' : 'w-2 h-2 rounded-full bg-[#5C469C] shrink-0'"></span>
-              <button (click)="deleteChapter(i, $event)" class="text-[#5C469C] hover:text-red-400 text-xs transition-colors shrink-0">✕</button>
-            </div>
-          </div>
-
-          <button (click)="addChapter()" class="w-full flex items-center justify-center gap-2 bg-[#5C469C]/30 hover:bg-[#5C469C]/50 border border-[#5C469C]/40 hover:border-[#D4ADFC]/30 text-[#D4ADFC] text-sm font-semibold py-2.5 rounded-xl transition-all duration-200">
-            ＋ เพิ่มตอนใหม่
-          </button>
+          <div class="text-5xl mb-3 opacity-30">📄</div>
+          <p class="text-[#7B6FA0] text-sm">เลือกตอนจากด้านขวา หรือสร้างตอนใหม่เพื่อเริ่มเขียน</p>
         </div>
+      </div>
 
-        <div *ngIf="activeChapter?.published" class="bg-[#1D267D]/60 border border-[#5C469C]/30 rounded-2xl p-5 space-y-4 animate-in fade-in duration-300">
-          <h3 class="text-white font-semibold text-sm flex items-center gap-2">
-            <span class="w-1 h-4 bg-[#D4ADFC] rounded-full"></span>
-            💬 ความคิดเห็น ({{activeChapter?.comments?.length || 0}})
-          </h3>
+      <aside class="space-y-4 relative">
+        <div class="sticky top-24 space-y-4">
+          
+          <div class="bg-[#1D267D]/60 border border-[#5C469C]/30 rounded-2xl p-5">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-white font-semibold text-sm flex items-center gap-2">
+                <span class="w-1 h-4 bg-[#D4ADFC] rounded-full"></span>
+                รายการตอน
+              </h3>
+              <span class="text-xs text-[#7B6FA0]">{{chapters.length}} ตอน</span>
+            </div>
 
-          <div class="bg-[#0C134F]/40 border border-[#5C469C]/30 rounded-xl p-3 space-y-2">
-            <textarea #commentInput rows="2" placeholder="เขียนความคิดเห็น..." class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-lg px-3 py-2 text-white text-xs placeholder-[#7B6FA0] outline-none focus:border-[#D4ADFC] transition-all resize-none"></textarea>
-            <button (click)="addComment(commentInput.value); commentInput.value = ''" class="w-full bg-[#D4ADFC] text-[#0C134F] text-xs px-4 py-1.5 rounded-lg font-semibold hover:bg-[#B085E8] transition-colors">
-              ส่งความคิดเห็น
+            <div class="space-y-2 mb-4 max-h-[300px] overflow-y-auto pr-1">
+              <div *ngFor="let ch of chapters; let i = index"
+                (click)="selectChapter(ch)"
+                [class]="activeChapter?.id === ch.id
+                  ? 'flex items-center gap-3 bg-[#5C469C]/50 border border-[#D4ADFC]/30 rounded-xl px-3 py-2.5 cursor-pointer transition-all'
+                  : 'flex items-center gap-3 bg-[#0C134F]/40 border border-[#5C469C]/20 rounded-xl px-3 py-2.5 cursor-pointer hover:bg-[#5C469C]/20 hover:border-[#5C469C]/50 transition-all'">
+
+                <span class="text-xs font-bold text-[#7B6FA0] w-5 shrink-0">{{ch.order}}</span>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm text-white truncate">{{ ch.title || 'ตอนที่ ' + ch.order }}</p>
+                </div>
+                <span [class]="ch.published ? 'w-2 h-2 rounded-full bg-[#72f5c8] shrink-0' : 'w-2 h-2 rounded-full bg-[#5C469C] shrink-0'"></span>
+                <button (click)="deleteChapter(i, $event)" class="text-[#5C469C] hover:text-red-400 text-xs transition-colors shrink-0">✕</button>
+              </div>
+            </div>
+
+            <button (click)="addChapter()" class="w-full flex items-center justify-center gap-2 bg-[#5C469C]/30 hover:bg-[#5C469C]/50 border border-[#5C469C]/40 hover:border-[#D4ADFC]/30 text-[#D4ADFC] text-sm font-semibold py-2.5 rounded-xl transition-all duration-200">
+              ＋ เพิ่มตอนใหม่
             </button>
           </div>
 
-          <div class="space-y-3 max-h-[300px] overflow-y-auto pr-1">
-            <div *ngFor="let comment of activeChapter?.comments" class="bg-[#0C134F]/40 border border-[#5C469C]/20 rounded-xl p-3 space-y-2">
-              <div class="flex items-start gap-2">
-                <div class="text-xl">{{comment.avatar}}</div>
-                <div class="flex-1 min-w-0">
-                  <div class="flex flex-col mb-1">
-                    <span class="text-xs font-semibold text-white truncate">{{comment.username}}</span>
-                    <span class="text-[9px] text-[#7B6FA0]">{{comment.timestamp | date:'short'}}</span>
+          <div *ngIf="activeChapter?.published" class="bg-[#1D267D]/60 border border-[#5C469C]/30 rounded-2xl p-5 space-y-4">
+            <h3 class="text-white font-semibold text-sm flex items-center gap-2">
+              <span class="w-1 h-4 bg-[#D4ADFC] rounded-full"></span>
+              💬 ความคิดเห็น ({{activeChapter?.comments?.length || 0}})
+            </h3>
+
+            <div class="bg-[#0C134F]/40 border border-[#5C469C]/30 rounded-xl p-3 space-y-2">
+              <textarea #commentInput rows="2" placeholder="เขียนความคิดเห็น..." class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-lg px-3 py-2 text-white text-xs placeholder-[#7B6FA0] outline-none focus:border-[#D4ADFC] transition-all resize-none"></textarea>
+              <button (click)="addComment(commentInput.value); commentInput.value = ''" class="w-full bg-[#D4ADFC] text-[#0C134F] text-xs px-4 py-1.5 rounded-lg font-semibold hover:bg-[#B085E8] transition-colors">
+                ส่งความคิดเห็น
+              </button>
+            </div>
+
+            <div class="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+              <div *ngFor="let comment of activeChapter?.comments" class="bg-[#0C134F]/40 border border-[#5C469C]/20 rounded-xl p-3 space-y-2">
+                <div class="flex items-start gap-2">
+                  <div class="text-xl">{{comment.avatar}}</div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex flex-col mb-1">
+                      <span class="text-xs font-semibold text-white truncate">{{comment.username}}</span>
+                      <span class="text-[9px] text-[#7B6FA0]">{{comment.timestamp | date:'short'}}</span>
+                    </div>
+                    <p class="text-[11px] text-[#D4ADFC] leading-relaxed break-words">{{comment.content}}</p>
                   </div>
-                  <p class="text-[11px] text-[#D4ADFC] leading-relaxed break-words">{{comment.content}}</p>
                 </div>
               </div>
-            </div>
-            <div *ngIf="!activeChapter?.comments || activeChapter?.comments?.length === 0" class="text-center py-4 text-[#7B6FA0] text-xs">
-              ยังไม่มีความคิดเห็น
+              <div *ngIf="!activeChapter?.comments || activeChapter?.comments?.length === 0" class="text-center py-4 text-[#7B6FA0] text-xs">
+                ยังไม่มีความคิดเห็น
+              </div>
             </div>
           </div>
-        </div>
 
-      </div>
-    </aside>
+        </div>
+      </aside>
 
   </div>
 </div>

@@ -49,10 +49,16 @@ export class UserService {
 
   updateProfile(formData: FormData) {
     return this.http.patch(`${this.API_URL}/profile`, formData, {
-      headers: this.getHeaders()
+      headers: this.getHeaders().delete('Content-Type')
     }).pipe(
       tap((res: any) => {
-        this.userSubject.next(res.user);
+        if (res.user) {
+          // ✅ เพิ่ม timestamp ป้องกัน cache
+          if (res.user.avatar_path) {
+            res.user.avatar_path = `${res.user.avatar_path}?t=${Date.now()}`;
+          }
+          this.userSubject.next(res.user);
+        }
       })
     );
   }

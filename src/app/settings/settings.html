@@ -1,14 +1,22 @@
 <div class="bg-[#0C134F] text-[#D4ADFC] min-h-screen font-sans">
 
+  <!-- Toast Notification -->
+  <div *ngIf="toast" 
+       class="fixed bottom-6 right-6 z-50 px-4 py-2 rounded-lg shadow-md text-sm"
+       [class.bg-green-500]="toastType === 'success'"
+       [class.bg-red-500]="toastType === 'error'"
+       [class.text-white]="true">
+    {{ toast }}
+  </div>
+
   <!-- NAVBAR -->
   <nav class="sticky top-0 z-50 flex h-16 items-center justify-between border-b border-[#1D267D] bg-[#0C134F]/90 backdrop-blur px-6">
 
     <!-- LEFT -->
     <div class="flex items-center gap-4">
-      <!-- back -->
       <a routerLink="/" class="text-[#7B6FA0] hover:text-[#D4ADFC] text-sm transition-colors">
-          ← กลับ
-        </a>
+        ← กลับ
+      </a>
     </div>
 
     <!-- RIGHT -->
@@ -18,39 +26,53 @@
         <button (click)="toggleProfile()" class="flex items-center gap-2">
 
           <div class="w-8 h-8 rounded-full overflow-hidden bg-[#5C469C] flex items-center justify-center text-white text-sm">
-            <img *ngIf="currentUser?.avatar_path"
-              [src]="currentUser.avatar_path"
-              class="w-full h-full object-cover">
-            <span *ngIf="!currentUser?.avatar_path">
-              {{ currentUser?.username?.[0] || 'น' }}
-            </span>
+            <img *ngIf="currentUser?.avatar_path" [src]="currentUser.avatar_path" class="w-full h-full object-cover">
+            <span *ngIf="!currentUser?.avatar_path">{{ currentUser?.username?.[0] || 'น' }}</span>
           </div>
 
-          <span class="text-sm text-white">
-            {{ currentUser?.username || 'นักอ่าน' }}
-          </span>
-
+          <span class="text-sm text-white">{{ currentUser?.username || 'นักอ่าน' }}</span>
           <span class="text-[#7B6FA0]">▾</span>
         </button>
 
         <!-- dropdown -->
-        <div *ngIf="profileOpen"
-          class="absolute right-0 top-full mt-2 w-56 bg-[#1D267D] border border-[#5C469C]/50 rounded-2xl shadow-2xl overflow-hidden z-50">
+        <div *ngIf="profileOpen" class="absolute right-0 top-full mt-2 w-64 bg-[#1D267D] border border-[#5C469C]/50 rounded-2xl shadow-2xl overflow-hidden z-50">
 
-          <div class="px-4 py-3 border-b border-[#5C469C]/30">
-            <p class="text-sm text-white">{{ currentUser?.username }}</p>
-            <p class="text-xs text-[#7B6FA0]">{{ currentUser?.email }}</p>
+          <div class="px-4 py-3 border-b border-[#5C469C]/30 flex items-center gap-3">
+            <img *ngIf="currentUser?.avatar_path; else fallback" [src]="currentUser.avatar_path" class="w-8 h-8 rounded-full object-cover" />
+            <ng-template #fallback>
+              <div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#5C469C] to-[#D4ADFC] flex items-center justify-center text-sm font-bold text-[#0C134F]">
+                {{currentUser?.username ? currentUser.username[0] : 'น'}}
+              </div>
+            </ng-template>
+            <div>
+              <p class="text-sm text-white">{{ currentUser?.username }}</p>
+              <p class="text-xs text-[#7B6FA0]">{{ currentUser?.email }}</p>
+            </div>
+          </div>
+
+          <!-- แถวแสดงเหรียญ -->
+          <div class="px-4 py-2 bg-gradient-to-r from-[#5C469C]/30 to-[#1D267D] border-b border-[#5C469C]/30">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-lg">🪙</span>
+                <span class="text-xs text-[#9B8CC4]">เหรียญของฉัน</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-lg font-bold text-[#D4ADFC]">{{ formatNumber(currentUser?.coin_balance || 0) }}</span>
+                <a routerLink="/topup" class="text-xs bg-[#D4ADFC] text-[#0C134F] px-2 py-0.5 rounded-full hover:bg-[#B085E8] transition-colors">+ เติม</a>
+              </div>
+            </div>
           </div>
 
           <div class="py-1.5">
             <a routerLink="/writer" class="block px-4 py-2 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30">✍️ เขียนนิยาย</a>
             <a routerLink="/storage" class="block px-4 py-2 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30">📦 คลังของฉัน</a>
             <a routerLink="/settings" class="block px-4 py-2 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30">⚙️ ตั้งค่า</a>
+            <a routerLink="/topup" class="block px-4 py-2 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30">🪙 เติมเหรียญ</a>
           </div>
 
           <div class="border-t border-[#5C469C]/30 py-1.5">
-            <button (click)="logout()"
-              class="w-full text-left px-4 py-2 text-sm text-[#ff9eb5] hover:bg-[#ff6f91]/10">
+            <button (click)="logout()" class="w-full text-left px-4 py-2 text-sm text-[#ff9eb5] hover:bg-[#ff6f91]/10">
               🚪 ออกจากระบบ
             </button>
           </div>
@@ -98,29 +120,18 @@
             </h2>
             <div class="flex items-center gap-5">
               <div class="w-20 h-20 rounded-2xl overflow-hidden shrink-0">
-                <img *ngIf="previewUrl || profile.avatar_path"
-                    [src]="previewUrl || profile.avatar_path"
-                    class="w-full h-full object-cover" />
-
-                <div *ngIf="!previewUrl && !profile.avatar_path"
-                    class="w-full h-full bg-gradient-to-br from-[#5C469C] to-[#D4ADFC] flex items-center justify-center text-3xl font-bold text-[#0C134F]">
+                <img *ngIf="previewUrl || profile.avatar_path" [src]="previewUrl || profile.avatar_path" class="w-full h-full object-cover" />
+                <div *ngIf="!previewUrl && !profile.avatar_path" class="w-full h-full bg-gradient-to-br from-[#5C469C] to-[#D4ADFC] flex items-center justify-center text-3xl font-bold text-[#0C134F]">
                   {{profile.name ? profile.name[0] : 'น'}}
                 </div>
               </div>
               <div>
                 <p class="text-white text-sm font-semibold mb-1">{{profile.name || 'นักอ่านตัวยง'}}</p>
                 <p class="text-[#7B6FA0] text-xs mb-3">{{profile.email || 'user@email.com'}}</p>
-                <button 
-                  (click)="fileInput.click()"
-                  class="text-xs border border-[#5C469C]/50 text-[#D4ADFC] px-4 py-1.5 rounded-full hover:bg-[#5C469C]/30 transition-colors">
+                <button (click)="fileInput.click()" class="text-xs border border-[#5C469C]/50 text-[#D4ADFC] px-4 py-1.5 rounded-full hover:bg-[#5C469C]/30 transition-colors">
                   เปลี่ยนรูปภาพ
                 </button>
-                <input
-                  type="file"
-                  #fileInput
-                  hidden
-                  accept="image/*"
-                  (change)="onFileSelected($event)" />
+                <input type="file" #fileInput hidden accept="image/*" (change)="onFileSelected($event)" />
               </div>
             </div>
           </div>
@@ -131,33 +142,19 @@
               <span class="w-1 h-5 bg-[#D4ADFC] rounded-full"></span> ข้อมูลส่วนตัว
             </h2>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div class="space-y-1.5">
-                <label class="text-xs font-semibold text-[#9B8CC4] uppercase tracking-wide">ชื่อผู้ใช้</label>
-                <input [(ngModel)]="profile.name" name="name"
-                  placeholder="ชื่อที่แสดงบนเว็บ"
-                  class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-xl px-4 py-2.5 text-white text-sm placeholder-[#7B6FA0] outline-none focus:border-[#D4ADFC] transition-all" />
-              </div>
-              <div class="space-y-1.5">
-                <label class="text-xs font-semibold text-[#9B8CC4] uppercase tracking-wide">นามปากกา</label>
-                <input [(ngModel)]="profile.penName" name="penName"
-                  placeholder="ชื่อนักเขียนของคุณ"
-                  class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-xl px-4 py-2.5 text-white text-sm placeholder-[#7B6FA0] outline-none focus:border-[#D4ADFC] transition-all" />
-              </div>
+            <div class="space-y-1.5">
+              <label class="text-xs font-semibold text-[#9B8CC4] uppercase tracking-wide">ชื่อผู้ใช้</label>
+              <input [(ngModel)]="profile.name" name="name" placeholder="ชื่อที่แสดงบนเว็บ" class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-xl px-4 py-2.5 text-white text-sm placeholder-[#7B6FA0] outline-none focus:border-[#D4ADFC] transition-all" />
             </div>
 
             <div class="space-y-1.5">
               <label class="text-xs font-semibold text-[#9B8CC4] uppercase tracking-wide">อีเมล</label>
-              <input [(ngModel)]="profile.email" name="email" type="email"
-                placeholder="your@email.com"
-                class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-xl px-4 py-2.5 text-white text-sm placeholder-[#7B6FA0] outline-none focus:border-[#D4ADFC] transition-all" />
+              <input [(ngModel)]="profile.email" name="email" type="email" placeholder="your@email.com" class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-xl px-4 py-2.5 text-white text-sm placeholder-[#7B6FA0] outline-none focus:border-[#D4ADFC] transition-all" />
             </div>
 
             <div class="space-y-1.5">
               <label class="text-xs font-semibold text-[#9B8CC4] uppercase tracking-wide">แนะนำตัว</label>
-              <textarea [(ngModel)]="profile.bio" name="bio" rows="3"
-                placeholder="บอกเล่าเกี่ยวกับตัวเองสั้นๆ..."
-                class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-xl px-4 py-2.5 text-white text-sm placeholder-[#7B6FA0] outline-none focus:border-[#D4ADFC] transition-all resize-none"></textarea>
+              <textarea [(ngModel)]="profile.bio" name="bio" rows="3" placeholder="บอกเล่าเกี่ยวกับตัวเองสั้นๆ..." class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-xl px-4 py-2.5 text-white text-sm placeholder-[#7B6FA0] outline-none focus:border-[#D4ADFC] transition-all resize-none"></textarea>
             </div>
 
             <div class="flex justify-end">
@@ -181,11 +178,8 @@
             <div class="space-y-1.5">
               <label class="text-xs font-semibold text-[#9B8CC4] uppercase tracking-wide">รหัสผ่านปัจจุบัน</label>
               <div class="relative">
-                <input [(ngModel)]="security.current" name="current-password" autocomplete="current-password"
-                  [type]="showPw ? 'text' : 'password'" placeholder="••••••••"
-                  class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-xl px-4 py-2.5 pr-11 text-white text-sm placeholder-[#7B6FA0] outline-none focus:border-[#D4ADFC] transition-all" />
-                <button type="button" (click)="showPw = !showPw"
-                  class="absolute right-3 top-1/2 -translate-y-1/2 text-[#7B6FA0] hover:text-[#D4ADFC] transition-colors text-sm">
+                <input [(ngModel)]="security.current" name="current-password" autocomplete="current-password" [type]="showPw ? 'text' : 'password'" placeholder="••••••••" class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-xl px-4 py-2.5 pr-11 text-white text-sm placeholder-[#7B6FA0] outline-none focus:border-[#D4ADFC] transition-all" />
+                <button type="button" (click)="showPw = !showPw" class="absolute right-3 top-1/2 -translate-y-1/2 text-[#7B6FA0] hover:text-[#D4ADFC] transition-colors text-sm">
                   {{showPw ? '🙈' : '👁️'}}
                 </button>
               </div>
@@ -193,35 +187,20 @@
 
             <div class="space-y-1.5">
               <label class="text-xs font-semibold text-[#9B8CC4] uppercase tracking-wide">รหัสผ่านใหม่</label>
-              <input [(ngModel)]="security.newPw" name="new-password" autocomplete="new-password"
-                [type]="showPw ? 'text' : 'password'" placeholder="••••••••"
-                class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-xl px-4 py-2.5 text-white text-sm placeholder-[#7B6FA0] outline-none focus:border-[#D4ADFC] transition-all" />
+              <input [(ngModel)]="security.newPw" name="new-password" autocomplete="new-password" [type]="showPw ? 'text' : 'password'" placeholder="••••••••" class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-xl px-4 py-2.5 text-white text-sm placeholder-[#7B6FA0] outline-none focus:border-[#D4ADFC] transition-all" />
             </div>
 
             <div class="space-y-1.5">
               <label class="text-xs font-semibold text-[#9B8CC4] uppercase tracking-wide">ยืนยันรหัสผ่านใหม่</label>
-              <input [(ngModel)]="security.confirm" name="confirm-password" autocomplete="new-password"
-                [type]="showPw ? 'text' : 'password'" placeholder="••••••••"
-                class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-xl px-4 py-2.5 text-white text-sm placeholder-[#7B6FA0] outline-none focus:border-[#D4ADFC] transition-all" />
+              <input [(ngModel)]="security.confirm" name="confirm-password" autocomplete="new-password" [type]="showPw ? 'text' : 'password'" placeholder="••••••••" class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-xl px-4 py-2.5 text-white text-sm placeholder-[#7B6FA0] outline-none focus:border-[#D4ADFC] transition-all" />
             </div>
 
-            <!-- ERROR -->
-            <div *ngIf="pwError"
-              class="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-2.5 text-red-300 text-sm">
+            <div *ngIf="pwError" class="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-2.5 text-red-300 text-sm">
               ⚠️ {{pwError}}
             </div>
 
-            <!-- SUCCESS (แทน toast) -->
-            <div *ngIf="toast"
-              class="bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-2.5 text-green-300 text-sm">
-              ✅ {{toast}}
-            </div>
-
             <div class="flex justify-end">
-              <button 
-                type="submit"
-                [disabled]="loadingPw"
-                class="bg-[#D4ADFC] text-[#0C134F] font-bold text-sm px-6 py-2.5 rounded-full hover:bg-[#B085E8] transition-colors">
+              <button type="submit" [disabled]="loadingPw" class="bg-[#D4ADFC] text-[#0C134F] font-bold text-sm px-6 py-2.5 rounded-full hover:bg-[#B085E8] transition-colors">
                 เปลี่ยนรหัสผ่าน
               </button>
             </div>
@@ -244,8 +223,6 @@
             </div>
           </div>
         </div>
-
-
 
       </div>
     </div>

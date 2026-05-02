@@ -1,10 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { RouterLink, Router } from '@angular/router';
 import { UserService } from '../service/user.service';
 import { ChangeDetectorRef } from '@angular/core';
-import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-settings',
@@ -19,6 +18,7 @@ export class SettingsComponent implements OnInit {
   loadingPw = false;
   pwError = '';
   toast = '';
+  toastType: 'success' | 'error' = 'success';
 
   tabs = [
     { key: 'profile',  icon: '👤', label: 'โปรไฟล์' },
@@ -27,9 +27,9 @@ export class SettingsComponent implements OnInit {
 
   profile: any = {
     name: '',
-    penName: '',
     email: '',
     bio: '',
+    avatar_path: ''
   };
 
   security = {
@@ -40,8 +40,15 @@ export class SettingsComponent implements OnInit {
   currentUser: any = null;
   profileOpen = false;
 
+  previewUrl: string | null = null;
+  selectedFile: File | null = null;
+  avatarBase64: string | null = null;
 
-  constructor(private userService: UserService, private cdr: ChangeDetectorRef, private router: Router) {}
+  constructor(
+    private userService: UserService, 
+    private cdr: ChangeDetectorRef, 
+    private router: Router
+  ) {}
     
   ngOnInit() {
     this.userService.loadProfile();
@@ -53,7 +60,6 @@ export class SettingsComponent implements OnInit {
 
       this.profile = {
         name: user.username || '',
-        penName: user.pen_name || '',
         email: user.email || '',
         bio: user.bio || '',
         avatar_path: user.avatar_path || ''
@@ -61,29 +67,49 @@ export class SettingsComponent implements OnInit {
     });
   }
 
+  formatNumber(value: number): string {
+    if (value === undefined || value === null) return '0';
+    if (value >= 1000000) return (value / 1000000).toFixed(1) + 'M';
+    if (value >= 1000) return (value / 1000).toFixed(1) + 'K';
+    return value.toString();
+  }
+
   save() {
     const formData = new FormData();
     formData.append('username', this.profile.name);
-    formData.append('pen_name', this.profile.penName);
     formData.append('bio', this.profile.bio);
-    if (this.selectedFile) {
-      formData.append('avatar_content', this.selectedFile);
+    
+    if (this.avatarBase64) {
+      formData.append('avatar_content', this.avatarBase64);
     }
+    
     this.userService.updateProfile(formData).subscribe({
-      next: () => {
-        if (this.selectedFile && this.previewUrl) {
-          this.profile.avatar_path = this.previewUrl;
+      next: (res: any) => {
+        this.showToastMessage('อัปเดตโปรไฟล์สำเร็จ! 🎉', 'success');
+        
+        if (res.user && this.currentUser) {
+          const timestamp = Date.now();
+          this.currentUser.avatar_path = res.user.avatar_path 
+            ? `${res.user.avatar_path}?t=${timestamp}` 
+            : null;
+          this.currentUser.username = res.user.username;
+          this.currentUser.bio = res.user.bio;
           
+          this.profile.avatar_path = this.currentUser.avatar_path;
+          this.profile.name = this.currentUser.username;
+          this.profile.bio = this.currentUser.bio;
         }
+        
+        this.previewUrl = null;
+        this.avatarBase64 = null;
+        this.cdr.detectChanges();
         this.userService.loadProfile();
-        this.showToast('บันทึกข้อมูลเรียบร้อยแล้ว');
       },
       error: (err) => {
-        console.log(err);
-        this.showToast('บันทึกไม่สำเร็จ');
+        console.error(err);
+        this.showToastMessage('เกิดข้อผิดพลาด กรุณาลองอีกครั้ง ❌', 'error');
       }
     });
-    
   }
 
   toggleProfile() {
@@ -96,27 +122,27 @@ export class SettingsComponent implements OnInit {
   }
 
   changePassword(event?: Event) {
-  event?.preventDefault();
+    event?.preventDefault();
     this.pwError = '';
-    this.toast = ''; // เคลียร์ success ก่อน
+    this.toast = '';
 
     if (this.loadingPw) return;
     this.loadingPw = true;
 
     if (!this.security.current) {
-      this.pwError = 'กรุณากรอกรหัสผ่านปัจจุบัน';
+      this.showToastMessage('กรุณากรอกรหัสผ่านปัจจุบัน', 'error');
       this.loadingPw = false;
       return;
     }
 
     if (this.security.newPw.length < 6) {
-      this.pwError = 'รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร';
+      this.showToastMessage('รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร', 'error');
       this.loadingPw = false;
       return;
     }
 
     if (this.security.newPw !== this.security.confirm) {
-      this.pwError = 'รหัสผ่านใหม่ไม่ตรงกัน';
+      this.showToastMessage('รหัสผ่านใหม่ไม่ตรงกัน', 'error');
       this.loadingPw = false;
       return;
     }
@@ -127,50 +153,52 @@ export class SettingsComponent implements OnInit {
       password_confirmation: this.security.confirm
     }).subscribe({
       next: (res: any) => {
-
-        this.pwError = ''; // 🔥 สำคัญ: ล้าง error
-
         this.security = { current: '', newPw: '', confirm: '' };
-
-        this.toast = 'เปลี่ยนรหัสผ่านเรียบร้อยแล้ว'; // ใช้แทน success
-
+        this.showToastMessage('เปลี่ยนรหัสผ่านเรียบร้อยแล้ว! 🔒', 'success');
         this.loadingPw = false;
         this.cdr.detectChanges();
       },
-
       error: (err) => {
-        this.toast = ''; // 🔥 ล้าง success
-
-        this.pwError = err.error?.error || 'เปลี่ยนรหัสผ่านไม่สำเร็จ';
+        this.showToastMessage(err.error?.error || 'เปลี่ยนรหัสผ่านไม่สำเร็จ', 'error');
         this.loadingPw = false;
         this.cdr.detectChanges();
       }
     });
   }
   
-  private showToast(msg: string) {
-  this.toast = msg;
-  this.cdr.detectChanges(); // 🔥 สำคัญมาก
-
-  setTimeout(() => {
-    this.toast = '';
+  private showToastMessage(message: string, type: 'success' | 'error') {
+    this.toast = message;
+    this.toastType = type;
     this.cdr.detectChanges();
-  }, 3000);
-}
+    
+    setTimeout(() => {
+      this.toast = '';
+      this.cdr.detectChanges();
+    }, 3000);
+  }
 
-  previewUrl: string | null = null;
-  selectedFile: File | null = null;
   onFileSelected(event: any) {
     const file = event.target.files[0];
-    if (!file) return;
-
-    this.selectedFile = file;
-
-  
-    const reader = new FileReader();
-    reader.onload = () => {
-      this.previewUrl = reader.result as string;
-    };
-    reader.readAsDataURL(file);
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        this.showToastMessage('ไฟล์รูปต้องมีขนาดไม่เกิน 5MB', 'error');
+        return;
+      }
+      
+      if (!file.type.match(/image\/(jpeg|png|jpg|gif)/)) {
+        this.showToastMessage('กรุณาเลือกรูปภาพเท่านั้น (JPG, PNG, GIF)', 'error');
+        return;
+      }
+      
+      const reader = new FileReader();
+      reader.onload = () => {
+        this.previewUrl = reader.result as string;
+        this.avatarBase64 = reader.result as string;
+        this.profile.avatar_path = this.previewUrl;
+        this.cdr.detectChanges();
+        this.showToastMessage('เลือกรูปภาพเรียบร้อยแล้ว ✅', 'success');
+      };
+      reader.readAsDataURL(file);
+    }
   }
 }

@@ -6,6 +6,7 @@ import { CreateNovelComponent } from './create-novel/create-novel';
 import { SettingsComponent } from './settings/settings';
 import { NovelReaderComponent } from './read-novel/novel-reader';
 import { StorageComponent } from './storage/storage';
+import { TopupComponent } from './topup/topup'; 
 export const routes: Routes = [
   { path: '', component: Home },
   { path: 'auth', component: AuthComponent },
@@ -15,5 +16,6 @@ export const routes: Routes = [
   { path: 'settings', component: SettingsComponent },
   { path: 'read/:id', component: NovelReaderComponent },
   { path: 'storage', component: StorageComponent },
+  { path: 'topup', component: TopupComponent },
   { path: '**', redirectTo: '' },
 ];

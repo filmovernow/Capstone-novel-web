@@ -12,9 +12,9 @@ interface Chapter {
   title: string;
   content: string;
   published: boolean;
-  accessType: 'free' | 'paid' | 'earlyAccess';
-  price?: number;
-  scheduledDate?: string;
+  price?: number;           // สำหรับ per_chapter
+  earlyAccessPrice?: number; // สำหรับ early_access
+  freeDate?: string;        // วันที่ปลดล็อคให้ฟรี
   comments?: Comment[];
 }
 
@@ -44,7 +44,6 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
   coverImageUrl = '';
   coverBase64 = '';
   saveStatus = '';
-  showMonetization = false;
   currentStatus: 'draft' | 'writing' | 'published' = 'writing';
 
   genres: string[] = [
@@ -67,6 +66,13 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
   
   novelId: number | null = null;
   isEditMode = false;
+
+  // ✅ ใช้แค่ pricingModel แบบเดียว
+  pricingModel: 'one_time' | 'early_access' | 'free' | 'per_chapter' = 'free';
+  oneTimePrice = 0;
+  earlyAccessPrice = 0;
+  earlyAccessDays = 7;
+  perChapterPrice = 0;
 
   constructor(
     private http: HttpClient,
@@ -124,9 +130,64 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
     console.log('🔄 Auto-saving... (status: writing)');
     
     if (this.isEditMode && this.novelId) {
-      this.updateNovel('writing');
-    } else if (this.novelTitle || this.synopsis || this.chapters.length > 0) {
-      this.createNovel('writing');
+      this.updateNovel('writing', false);
+    } else {
+      this.createNovelWithoutRedirect('writing');
+    }
+  }
+
+  createNovelWithoutRedirect(status: 'draft' | 'writing' | 'published') {
+    this.isSaving = true;
+    const token = localStorage.getItem('token');
+    const headers = new HttpHeaders().set('Authorization', `Bearer ${token}`);
+
+    const { isPremium, novelPrice } = this.getPricingData();
+
+    const novelData: any = {
+      novel: {
+        title: this.novelTitle,
+        description: this.synopsis,
+        pen_name: this.penName,
+        genres: this.selectedGenres,
+        status: status,
+        is_premium: isPremium,
+        price: novelPrice,
+        pricing_model: this.pricingModel,
+        early_access_days: this.earlyAccessDays,
+        per_chapter_price: this.perChapterPrice
+      }
+    };
+
+    if (this.coverBase64) {
+      novelData.cover_content = this.coverBase64;
+    }
+
+    this.http.post(`${this.apiUrl}/novels`, novelData, { headers }).subscribe({
+      next: (novelRes: any) => {
+        this.novelId = novelRes.id;
+        this.isEditMode = true;
+        this.currentStatus = status;
+        this.saveChapters(this.novelId!, status, false);
+      },
+      error: (err) => {
+        console.error('Auto-save error:', err);
+        this.isSaving = false;
+      }
+    });
+  }
+
+  // ✅ helper method แปลง pricingModel
+  getPricingData(): { isPremium: boolean; novelPrice: number } {
+    switch(this.pricingModel) {
+      case 'one_time':
+        return { isPremium: true, novelPrice: this.oneTimePrice };
+      case 'early_access':
+        return { isPremium: true, novelPrice: 0 };
+      case 'per_chapter':
+        return { isPremium: true, novelPrice: 0 };
+      case 'free':
+      default:
+        return { isPremium: false, novelPrice: 0 };
     }
   }
 
@@ -142,6 +203,21 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
           if (novel.cover_path) {
             this.coverImageUrl = novel.cover_path;
           }
+          
+          // ✅ โหลด pricingModel จาก backend
+          if (novel.pricing_model) {
+            this.pricingModel = novel.pricing_model;
+          } else if (novel.is_premium) {
+            // fallback สำหรับข้อมูลเก่า
+            this.pricingModel = novel.price > 0 ? 'one_time' : 'early_access';
+          } else {
+            this.pricingModel = 'free';
+          }
+          
+          this.oneTimePrice = novel.price || 0;
+          this.earlyAccessDays = novel.early_access_days || 7;
+          this.perChapterPrice = novel.per_chapter_price || 0;
+          
           this.http.get<any[]>(`${this.apiUrl}/novels/${this.novelId}/chapters`)
             .subscribe({
               next: (chapters) => {
@@ -158,7 +234,9 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
                       title: ch.title || `ตอนที่ ${ch.chapter_no}`,
                       content: ch.content || '',
                       published: true,
-                      accessType: 'free',
+                      price: ch.price || 0,
+                      earlyAccessPrice: ch.early_access_price || ch.price || 0,
+                      freeDate: ch.free_date,
                       comments: []
                     };
                     this.chapters.push(chapter);
@@ -266,7 +344,8 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
       title: '',
       content: '',
       published: false,
-      accessType: 'free',
+      price: 0,
+      earlyAccessPrice: this.earlyAccessPrice,
       comments: [],
     };
     this.chapters.push(ch);
@@ -291,15 +370,6 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
     }
   }
 
-  toggleMonetization() {
-    this.showMonetization = !this.showMonetization;
-  }
-
-  setAccessType(type: 'free' | 'paid' | 'earlyAccess') {
-    if (this.activeChapter) {
-      this.activeChapter.accessType = type;
-    }
-  }
 
   addComment(content: string) {
     if (!this.activeChapter || !content.trim()) return;
@@ -322,9 +392,9 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
 
   saveDraft() {
     if (this.isEditMode && this.novelId) {
-      this.updateNovel('draft', true);  // ✅ ส่ง参数 true ว่าให้กลับหน้า writer
+      this.updateNovel('draft', true);
     } else {
-      this.createNovel('draft', true);  // ✅ ส่ง参数 true ว่าให้กลับหน้า writer
+      this.createNovel('draft', true);
     }
   }
 
@@ -335,9 +405,9 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
     }
 
     if (this.isEditMode && this.novelId) {
-      this.updateNovel('published', true);  // ✅ เผยแพร่ก็กลับหน้า writer
+      this.updateNovel('published', true);
     } else {
-      this.createNovel('published', true);  // ✅ เผยแพร่ก็กลับหน้า writer
+      this.createNovel('published', true);
     }
   }
 
@@ -346,13 +416,20 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
     const token = localStorage.getItem('token');
     const headers = new HttpHeaders().set('Authorization', `Bearer ${token}`);
 
+    const { isPremium, novelPrice } = this.getPricingData();
+
     const novelData: any = {
       novel: {
         title: this.novelTitle,
         description: this.synopsis,
         pen_name: this.penName,
         genres: this.selectedGenres,
-        status: status
+        status: status,
+        is_premium: isPremium,
+        price: novelPrice,
+        pricing_model: this.pricingModel,
+        early_access_days: this.earlyAccessDays,
+        per_chapter_price: this.perChapterPrice
       }
     };
 
@@ -369,7 +446,7 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
         this.novelId = novelId;
         this.isEditMode = true;
         this.currentStatus = status;
-        this.saveChapters(novelId, status, shouldRedirect);  // ✅ ส่ง shouldRedirect ต่อ
+        this.saveChapters(novelId, status, shouldRedirect);
       },
       error: (err) => {
         console.error('Error creating novel:', err);
@@ -385,12 +462,24 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
     const token = localStorage.getItem('token');
     const headers = new HttpHeaders().set('Authorization', `Bearer ${token}`);
 
+    let finalStatus = status;
+    if (this.currentStatus === 'published' && status === 'writing') {
+      finalStatus = 'writing';
+    }
+
+    const { isPremium, novelPrice } = this.getPricingData();
+
     const novelData: any = {
       novel: {
         title: this.novelTitle,
         description: this.synopsis,
         genres: this.selectedGenres,
-        status: status
+        status: finalStatus,
+        is_premium: isPremium,
+        price: novelPrice,
+        pricing_model: this.pricingModel,
+        early_access_days: this.earlyAccessDays,
+        per_chapter_price: this.perChapterPrice
       }
     };
 
@@ -398,21 +487,19 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
       novelData.cover_content = this.coverBase64;
     }
 
-    const statusText = status === 'published' ? 'เผยแพร่' : (status === 'draft' ? 'บันทึกร่าง' : 'บันทึกอัตโนมัติ');
+    const statusText = finalStatus === 'published' ? 'เผยแพร่' : (finalStatus === 'draft' ? 'บันทึกร่าง' : 'บันทึกอัตโนมัติ');
     this.saveStatus = `⏳ กำลัง${statusText}...`;
 
     this.http.patch(`${this.apiUrl}/novels/${this.novelId}`, novelData, { headers }).subscribe({
       next: () => {
-        this.currentStatus = status;
+        this.currentStatus = finalStatus;
         this.saveStatus = `✅ ${statusText}สำเร็จ!`;
         
-        // ✅ ถ้าควร redirect และเป็น draft หรือ published ให้กลับหน้า writer
-        if (shouldRedirect && (status === 'draft' || status === 'published')) {
+        if (shouldRedirect && (finalStatus === 'draft' || finalStatus === 'published')) {
           setTimeout(() => {
             this.router.navigate(['/writer']);
           }, 500);
-        } else if (status === 'published') {
-          // เผยแพร่แต่ไม่ redirect? (กันไว้)
+        } else if (finalStatus === 'published') {
           setTimeout(() => {
             this.router.navigate(['/writer']);
           }, 1000);
@@ -421,7 +508,7 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
         }
         
         if (this.novelId) {
-          this.saveChapters(this.novelId!, status, shouldRedirect);
+          this.saveChapters(this.novelId!, finalStatus, shouldRedirect);
         } else {
           this.isSaving = false;
         }
@@ -442,10 +529,7 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
     
     if (chaptersToSave.length === 0) {
       this.isSaving = false;
-      // ✅ ถ้าควร redirect ให้กลับหน้า writer
       if (shouldRedirect && (novelStatus === 'draft' || novelStatus === 'published')) {
-        this.router.navigate(['/writer']);
-      } else if (novelStatus === 'published') {
         this.router.navigate(['/writer']);
       }
       return;
@@ -463,10 +547,27 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
           
           chaptersToSave.forEach((ch, index) => {
             const chapterNo = index + 1;
-            const chapterData = {
+            
+            let chapterPrice = 0;
+            
+            if (this.pricingModel === 'per_chapter') {
+              chapterPrice = ch.price ?? this.perChapterPrice;
+              if (chapterNo === 1 && chapterPrice === 0) {
+                chapterPrice = 0;
+              }
+            } else if (this.pricingModel === 'early_access') {
+              chapterPrice = ch.earlyAccessPrice ?? this.earlyAccessPrice;
+            }
+            
+            const chapterData: any = {
               title: ch.title || `ตอนที่ ${chapterNo}`,
-              content: ch.content
+              content: ch.content,
+              price: chapterPrice
             };
+            
+            if (this.pricingModel === 'early_access' && ch.freeDate) {
+              chapterData.free_date = ch.freeDate;
+            }
             
             if (existingMap.has(chapterNo)) {
               requests.push(
@@ -485,10 +586,7 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
           forkJoin(requests).subscribe({
             next: () => {
               this.isSaving = false;
-              // ✅ ถ้าควร redirect ให้กลับหน้า writer
               if (shouldRedirect && (novelStatus === 'draft' || novelStatus === 'published')) {
-                this.router.navigate(['/writer']);
-              } else if (novelStatus === 'published') {
                 this.router.navigate(['/writer']);
               } else {
                 this.saveStatus = '✅ บันทึกสำเร็จ';

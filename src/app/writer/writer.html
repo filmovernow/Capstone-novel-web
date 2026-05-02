@@ -1,12 +1,12 @@
 <div class="bg-[#0C134F] text-[#D4ADFC] min-h-screen font-sans">
 
-  <!-- NAVBAR -->
+  <!-- NAVBAR (คงเดิม แต่เพิ่มแถวเหรียญ) -->
   <nav [class]="'fixed top-0 w-full z-50 transition-all duration-300 border-b ' + (scrolled ? 'bg-[#0C134F]/90 backdrop-blur border-[#1D267D] shadow' : 'bg-transparent border-transparent')">
     <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
 
       <div (click)="goHome()" class="flex items-center gap-2 cursor-pointer">
         <img src="logo.png" class="h-8">
-        <span class="text-[#D4ADFC] font-semibold">NovelHub</span>
+        <span class="text-[#D4ADFC] font-semibold">My Novels</span>
       </div>
 
       <div class="flex items-center justify-end gap-5 shrink-0">
@@ -25,16 +25,45 @@
               <span class="text-[#7B6FA0]">▾</span>
             </button>
 
-            <div *ngIf="profileOpen" class="absolute right-0 top-full mt-2 w-56 bg-[#1D267D] border border-[#5C469C]/50 rounded-2xl shadow-2xl shadow-black/50 overflow-hidden z-50">
-              <div class="px-4 py-3 border-b border-[#5C469C]/30">
-                <p class="text-sm text-white">{{ currentUser?.username }}</p>
-                <p class="text-xs text-[#7B6FA0]">{{ currentUser?.email }}</p>
+            <!-- ✅ dropdown ที่ปรับปรุงใหม่ มีเหรียญ -->
+            <div *ngIf="profileOpen" class="absolute right-0 top-full mt-2 w-64 bg-[#1D267D] border border-[#5C469C]/50 rounded-2xl shadow-2xl shadow-black/50 overflow-hidden z-50">
+              
+              <!-- Header พร้อม avatar -->
+              <div class="px-4 py-3 border-b border-[#5C469C]/30 flex items-center gap-3">
+                <img *ngIf="currentUser?.avatar_path; else fallback" [src]="currentUser.avatar_path" class="w-8 h-8 rounded-full object-cover" />
+                <ng-template #fallback>
+                  <div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#5C469C] to-[#D4ADFC] flex items-center justify-center text-sm font-bold text-[#0C134F]">
+                    {{currentUser?.username ? currentUser.username[0] : 'น'}}
+                  </div>
+                </ng-template>
+                <div>
+                  <p class="text-sm text-white">{{ currentUser?.username }}</p>
+                  <p class="text-xs text-[#7B6FA0]">{{ currentUser?.email }}</p>
+                </div>
               </div>
+
+              <!-- ✅ แถวแสดงเหรียญ -->
+              <div class="px-4 py-2 bg-gradient-to-r from-[#5C469C]/30 to-[#1D267D] border-b border-[#5C469C]/30">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <span class="text-lg">🪙</span>
+                    <span class="text-xs text-[#9B8CC4]">เหรียญของฉัน</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-lg font-bold text-[#D4ADFC]">{{ formatNumber(currentUser?.coin_balance || 0) }}</span>
+                    <a routerLink="/topup" class="text-xs bg-[#D4ADFC] text-[#0C134F] px-2 py-0.5 rounded-full hover:bg-[#B085E8] transition-colors">+ เติม</a>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Menu items -->
               <div class="py-1.5">
                 <a routerLink="/writer" class="block px-4 py-2 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30">✍️ เขียนนิยาย</a>
                 <a routerLink="/storage" class="block px-4 py-2 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30">📦 คลังของฉัน</a>
                 <a routerLink="/settings" class="block px-4 py-2 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30">⚙️ ตั้งค่า</a>
               </div>
+
+              <!-- Logout -->
               <div class="border-t border-[#5C469C]/30 py-1.5">
                 <button (click)="logout()" class="w-full text-left px-4 py-2 text-sm text-[#ff9eb5] hover:bg-[#ff6f91]/10">🚪 ออกจากระบบ</button>
               </div>
@@ -45,6 +74,7 @@
     </div>
   </nav>
 
+  <!-- ส่วนที่เหลือเหมือนเดิม -->
   <div class="max-w-7xl mx-auto px-6 pt-24 pb-16">
 
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10">
@@ -105,8 +135,8 @@
 
           <div class="flex justify-between text-xs text-[#7B6FA0] mb-4">
             <span>📖 {{novel.chapters_count}} ตอน</span>
-            <span>👁 {{novel.views || 0}}</span>
-            <span>❤️ {{novel.likes || 0}}</span>
+            <span>👁 {{formatNumber(novel.views)}}</span>
+            <span>❤️ {{formatNumber(novel.likes)}}</span>
           </div>
 
           <div class="flex gap-2">

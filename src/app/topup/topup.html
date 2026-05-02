@@ -1,0 +1,165 @@
+<div class="min-h-screen bg-gradient-to-b from-[#0C134F] to-[#1D267D] font-sans">
+  
+  <!-- ✅ NAVBAR พร้อม dropdown ครบ -->
+  <nav class="sticky top-0 z-50 flex h-16 items-center justify-between border-b border-[#1D267D] bg-[#0C134F]/90 backdrop-blur px-6">
+    
+    <!-- LEFT -->
+    <div class="flex items-center gap-4">
+      <button (click)="goBack()" class="text-[#7B6FA0] hover:text-[#D4ADFC] text-sm transition-colors">
+        ← กลับ
+      </button>
+    </div>
+
+    <!-- CENTER -->
+    <div class="absolute left-1/2 -translate-x-1/2 text-center">
+      <span class="block text-sm text-white font-medium">เติมเหรียญ</span>
+      <span class="text-xs text-[#7B6FA0]">🪙 1 บาท = 1 เหรียญ</span>
+    </div>
+
+    <!-- RIGHT - Profile Dropdown -->
+    <div class="flex items-center justify-end gap-5 shrink-0">
+      <ng-container *ngIf="!currentUser; else loggedIn">
+        <a routerLink="/auth" class="flex items-center gap-2 text-sm text-[#D4ADFC] hover:text-white transition-colors">🔑 เข้าสู่ระบบ</a>
+      </ng-container>
+
+      <ng-template #loggedIn>
+        <div class="relative" id="profile-wrapper">
+          <button (click)="toggleProfile()" class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-full overflow-hidden bg-[#5C469C] flex items-center justify-center text-white text-sm">
+              <img *ngIf="currentUser?.avatar_path" [src]="currentUser.avatar_path" class="w-full h-full object-cover">
+              <span *ngIf="!currentUser?.avatar_path">{{ currentUser?.username?.[0] || 'น' }}</span>
+            </div>
+            <span class="text-sm text-white">{{ currentUser?.username || 'นักอ่าน' }}</span>
+            <span class="text-[#7B6FA0]">▾</span>
+          </button>
+
+          <!-- Dropdown -->
+          <div *ngIf="profileOpen" class="absolute right-0 top-full mt-2 w-64 bg-[#1D267D] border border-[#5C469C]/50 rounded-2xl shadow-2xl shadow-black/50 overflow-hidden z-50">
+            
+            <!-- Header พร้อม avatar -->
+            <div class="px-4 py-3 border-b border-[#5C469C]/30 flex items-center gap-3">
+              <img *ngIf="currentUser?.avatar_path; else fallback" [src]="currentUser.avatar_path" class="w-8 h-8 rounded-full object-cover" />
+              <ng-template #fallback>
+                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-[#5C469C] to-[#D4ADFC] flex items-center justify-center text-sm font-bold text-[#0C134F]">
+                  {{currentUser?.username ? currentUser.username[0] : 'น'}}
+                </div>
+              </ng-template>
+              <div>
+                <p class="text-sm text-white">{{ currentUser?.username }}</p>
+                <p class="text-xs text-[#7B6FA0]">{{ currentUser?.email }}</p>
+              </div>
+            </div>
+
+            <!-- แถวแสดงเหรียญ -->
+            <div class="px-4 py-2 bg-gradient-to-r from-[#5C469C]/30 to-[#1D267D] border-b border-[#5C469C]/30">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="text-lg">🪙</span>
+                  <span class="text-xs text-[#9B8CC4]">เหรียญของฉัน</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-lg font-bold text-[#D4ADFC]">{{ formatNumber(currentUser?.coin_balance || 0) }}</span>
+                  <a routerLink="/topup" class="text-xs bg-[#D4ADFC] text-[#0C134F] px-2 py-0.5 rounded-full hover:bg-[#B085E8] transition-colors">+ เติม</a>
+                </div>
+              </div>
+            </div>
+
+            <!-- Menu items -->
+            <div class="py-1.5">
+              <a routerLink="/writer" class="flex items-center gap-3 px-4 py-2.5 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30 hover:text-white transition-colors" style="text-decoration:none"><span>✍️</span> เขียนนิยาย</a>
+              <a routerLink="/storage" class="flex items-center gap-3 px-4 py-2.5 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30 hover:text-white transition-colors" style="text-decoration:none"><span>📦</span> คลังของฉัน</a>
+              <a routerLink="/settings" class="flex items-center gap-3 px-4 py-2.5 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30 hover:text-white transition-colors" style="text-decoration:none"><span>⚙️</span> ตั้งค่าบัญชี</a>
+            </div>
+
+            <!-- Logout -->
+            <div class="border-t border-[#5C469C]/30 py-1.5">
+              <button (click)="logout()" class="w-full text-left flex items-center gap-3 px-4 py-2.5 text-sm text-[#ff9eb5] hover:bg-[#ff6f91]/10 transition-colors"><span>🚪</span> ออกจากระบบ</button>
+            </div>
+          </div>
+        </div>
+      </ng-template>
+    </div>
+
+  </nav>
+
+  <!-- ส่วนเนื้อหา -->
+  <div class="max-w-md mx-auto px-6 pt-24 pb-16">
+    
+    <!-- แสดงเหรียญปัจจุบัน -->
+    <div class="bg-gradient-to-r from-[#5C469C] to-[#1D267D] rounded-2xl p-6 mb-8 text-center border border-[#D4ADFC]/20">
+      <p class="text-[#D4ADFC] text-sm mb-1">เหรียญของคุณ</p>
+      <p class="text-5xl font-bold text-white">{{ formatNumber(currentUser?.coin_balance || 0) }} <span class="text-lg text-[#D4ADFC]">เหรียญ</span></p>
+    </div>
+
+    <!-- ใส่จำนวนเงิน -->
+    <div class="bg-[#1D267D]/60 border border-[#5C469C]/40 rounded-2xl p-6 mb-8">
+      <h3 class="font-semibold text-white mb-4 flex items-center gap-2">
+        <span class="w-1 h-4 bg-[#D4ADFC] rounded-full"></span>
+        ใส่จำนวนเงินที่ต้องการเติม
+      </h3>
+      
+      <div class="space-y-4">
+        <div>
+          <label class="text-[#9B8CC4] text-sm block mb-2">จำนวนเงิน (บาท)</label>
+          <div class="relative">
+            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-[#D4ADFC]">฿</span>
+            <input type="number" 
+                   [(ngModel)]="amount" 
+                   (input)="onAmountChange()"
+                   min="10" 
+                   max="50000"
+                   placeholder="ขั้นต่ำ 10 บาท"
+                   class="w-full bg-[#0C134F] border border-[#5C469C] rounded-xl pl-10 pr-4 py-3 text-white placeholder-[#7B6FA0] outline-none focus:border-[#D4ADFC] transition-colors text-lg">
+          </div>
+          <p class="text-[#7B6FA0] text-xs mt-1">* ขั้นต่ำ 10 บาท สูงสุด 50,000 บาท</p>
+        </div>
+
+        <!-- แสดงเหรียญที่จะได้รับ -->
+        <div class="bg-[#0C134F]/60 rounded-xl p-4 text-center">
+          <p class="text-[#9B8CC4] text-sm mb-1">คุณจะได้รับ</p>
+          <p class="text-3xl font-bold text-[#D4ADFC]">{{ getCoins() }} <span class="text-base">เหรียญ</span></p>
+          <p class="text-[#7B6FA0] text-xs mt-1">(1 บาท = 1 เหรียญ)</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- แสดง error -->
+    <div *ngIf="errorMessage" class="bg-red-500/20 border border-red-500/50 rounded-xl p-3 mb-6 text-red-200 text-sm text-center">
+      ⚠️ {{ errorMessage }}
+    </div>
+
+    <!-- ปุ่มชำระเงิน -->
+    <button (click)="processPayment()" 
+            [disabled]="isLoading || !amount || amount < 10"
+            class="w-full bg-[#D4ADFC] text-[#0C134F] font-bold py-3 rounded-xl hover:bg-[#B085E8] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+      <span *ngIf="!isLoading">💳 ชำระเงิน {{ amount && amount >= 10 ? amount : 0 }} บาท</span>
+      <span *ngIf="isLoading" class="flex items-center gap-2">
+        <svg class="animate-spin h-5 w-5 text-[#0C134F]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        กำลังดำเนินการ...
+      </span>
+    </button>
+
+    <p class="text-center text-[#7B6FA0] text-xs mt-4">
+      🔒 ระบบรักษาความปลอดภัยด้วย Stripe • รองรับบัตรเครดิต/เดบิต และ PromptPay
+    </p>
+
+    <div class="mt-6 text-center text-[#7B6FA0] text-xs space-y-1">
+      <p>⚠️ เหรียญที่เติมแล้วไม่สามารถขอคืนเงินได้</p>
+      <p>💡 เหรียญใช้สำหรับปลดล็อคตอนพิเศษ</p>
+    </div>
+
+  </div>
+</div>
+
+<!-- <style>
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  .animate-spin {
+    animation: spin 1s linear infinite;
+  }
+</style> -->
