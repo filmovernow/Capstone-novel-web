@@ -1,3 +1,4 @@
+<!-- home.html -->
 <div class="bg-[#0C134F] text-[#D4ADFC] min-h-screen font-sans">
 
   <app-navbar (searchEvent)="onNavbarSearch($event)"></app-navbar>
@@ -25,7 +26,6 @@
           <p class="text-xs text-[#9B8CC4]">{{b.pen_name}}</p>
         </div>
         <div class="flex gap-1 flex-wrap">
-          <!-- ✅ แสดงแค่ 3 แท็กแรก -->
           <span *ngFor="let g of b.genres | slice:0:3" class="text-[10px] bg-[#5C469C]/50 text-[#D4ADFC] px-2 py-0.5 rounded-full">{{g.name}}</span>
           <span *ngIf="b.genres && b.genres.length > 3" class="text-[10px] text-[#7B6FA0] px-1">+{{b.genres.length - 3}}</span>
         </div>
@@ -89,19 +89,25 @@
 
       <!-- BOOK GRID HEADER -->
       <div class="flex items-center justify-between mb-5">
-        <h2 class="text-lg font-semibold text-white flex items-center gap-2"><span class="w-1 h-5 bg-[#D4ADFC] rounded-full inline-block"></span>หนังสือแนะนำ</h2>
-        <a href="#" class="text-sm text-[#D4ADFC] hover:text-[#B085E8]">ดูทั้งหมด →</a>
+        <h2 class="text-lg font-semibold text-white flex items-center gap-2">
+          <span class="w-1 h-5 bg-[#D4ADFC] rounded-full inline-block"></span>
+          <span *ngIf="selectedCat === 'แนะนำ'">หนังสือแนะนำ</span>
+          <span *ngIf="selectedCat === 'อัปเดตล่าสุด'">อัปเดตล่าสุด</span>
+          <span *ngIf="selectedCat === 'กำลังฮิต'">ยอดนิยม</span>
+        </h2>
+        <button (click)="viewAll()" class="text-sm text-[#D4ADFC] hover:text-[#B085E8] transition-colors cursor-pointer">
+          ดูทั้งหมด →
+        </button>
       </div>
 
       <!-- BOOK GRID -->
       <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-        <div *ngFor="let book of filteredBooks" [routerLink]="['/read', book.id]" class="bg-[#1D267D] rounded-2xl overflow-hidden border border-[#5C469C]/30 hover:-translate-y-2 hover:shadow-xl hover:shadow-[#000]/40 hover:border-[#D4ADFC]/50 transition-all duration-300 cursor-pointer group">
+        <div *ngFor="let book of displayBooks" [routerLink]="['/read', book.id]" class="bg-[#1D267D] rounded-2xl overflow-hidden border border-[#5C469C]/30 hover:-translate-y-2 hover:shadow-xl hover:shadow-[#000]/40 hover:border-[#D4ADFC]/50 transition-all duration-300 cursor-pointer group">
           <div class="relative overflow-hidden">
             <img *ngIf="book.cover_path" [src]="book.cover_path" class="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-500" />
             <div *ngIf="!book.cover_path" class="w-full h-48 bg-[#0C134F] flex items-center justify-center text-sm text-[#9B8CC4]">📖 ไม่มีรูปปก</div>
             <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-70"></div>
             
-            <!-- ✅ เพิ่ม badge แสดงยอดวิวตรงมุม -->
             <div class="absolute bottom-2 right-2 bg-black/60 backdrop-blur rounded-full px-2 py-0.5 text-xs text-white flex items-center gap-1">
               <span>👁️</span> {{book.view_count || 0 | number}}
             </div>
@@ -119,6 +125,11 @@
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- แสดงเมื่อไม่มีข้อมูล -->
+      <div *ngIf="displayBooks.length === 0" class="text-center py-10 text-[#7B6FA0]">
+        ไม่พบนิยายในหมวดนี้
       </div>
 
     </div>

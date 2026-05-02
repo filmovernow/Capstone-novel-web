@@ -19,7 +19,7 @@ interface Novel {
   tags?: any[];
   updated_at?: string;
   view_count?: number;
-  like_count?: number;  // ✅ เพิ่มตรงนี้
+  like_count?: number;
   status?: 'draft' | 'published' | 'writing';
   rating?: number;
 }
@@ -40,8 +40,9 @@ export class Home implements OnInit {
   searchDone = false;
   searchResults: Novel[] = [];
 
-  categories = ['ทั้งหมด', 'อัปเดตใหม่', 'กำลังฮิต', 'จบแล้ว'];
-  selectedCat = 'ทั้งหมด';
+  categories = ['แนะนำ', 'อัปเดตล่าสุด', 'กำลังฮิต'];
+  selectedCat = 'แนะนำ';
+  showAllBooks = false;
 
   selectedGenre = '';
   selectedTag = '';
@@ -128,6 +129,17 @@ export class Home implements OnInit {
     return value.toString();
   }
 
+  get displayBooks() {
+    if (this.showAllBooks) {
+      return this.filteredBooks;
+    }
+    return this.filteredBooks.slice(0, 12);
+  }
+
+  viewAll() {
+    this.showAllBooks = true;
+  }
+
   onNavbarSearch(searchTerm: string) {
     this.search = searchTerm;
     this.onSearch();
@@ -145,14 +157,7 @@ export class Home implements OnInit {
   get filteredBooks() {
     let result = [...this.books];
 
-    if (this.search && this.search.trim()) {
-      const q = this.search.trim().toLowerCase();
-      result = result.filter(b =>
-        b.title.toLowerCase().includes(q) ||
-        (b.pen_name || '').toLowerCase().includes(q)
-      );
-    }
-
+    // กรองตามแนว
     if (this.selectedGenre) {
       result = result.filter(book => 
         book.genres?.some((g: any) => 
@@ -169,13 +174,23 @@ export class Home implements OnInit {
       );
     }
     
+    // เรียงลำดับตามหมวดหมู่ที่เลือก
     switch(this.selectedCat) {
-      case 'อัปเดตใหม่':
+      case 'แนะนำ':
+        result = [...result].sort((a, b) => b.id - a.id);
+        break;
+      case 'อัปเดตล่าสุด':
         result = [...result].sort((a, b) => 
           new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime()
         );
         break;
+      case 'กำลังฮิต':
+        result = [...result].sort((a, b) => 
+          (b.view_count || 0) - (a.view_count || 0)
+        );
+        break;
       default:
+        result = [...result].sort((a, b) => b.id - a.id);
         break;
     }
     
@@ -194,15 +209,18 @@ export class Home implements OnInit {
     this.selectedCat = cat;
     this.selectedGenre = '';
     this.selectedTag = '';
+    this.showAllBooks = false;
   }
 
   filterByGenre(genre: string) {
     this.selectedGenre = this.selectedGenre === genre ? '' : genre;
+    this.showAllBooks = false;
     console.log('Selected genre:', this.selectedGenre);
   }
 
   filterByTag(tag: string) {
     this.selectedTag = this.selectedTag === tag ? '' : tag;
+    this.showAllBooks = false;
     console.log('Selected tag:', this.selectedTag);
   }
 
@@ -219,8 +237,6 @@ export class Home implements OnInit {
     ).slice(0, 5);
     this.searchDone = true;
   }
-
-  
 
   @HostListener('window:scroll', [])
   onScroll() {
