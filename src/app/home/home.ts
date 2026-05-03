@@ -6,7 +6,6 @@ import { RouterLink, Router } from '@angular/router';
 import { UserService } from '../service/user.service'; 
 import { ChangeDetectorRef } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { NumberPipe } from './number.pipe';
 import { NavbarComponent } from '../components/navbar/navbar';
 
 interface Novel {
@@ -27,7 +26,7 @@ interface Novel {
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, NumberPipe, NavbarComponent],
+  imports: [CommonModule, FormsModule, RouterLink, NavbarComponent],
   templateUrl: './home.html',
 })
 export class Home implements OnInit {

@@ -14,8 +14,9 @@ interface Chapter {
   content: string;
   published: boolean;
   price?: number;
-  earlyAccessPrice?: number;
   freeDate?: string;
+  freeDateOnly?: string;
+  freeTimeOnly?: string;
   comments?: Comment[];
 }
 
@@ -31,7 +32,7 @@ interface Comment {
 @Component({
   selector: 'app-create-novel',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, EditorComponent],
+  imports: [CommonModule, FormsModule, EditorComponent],
   templateUrl: './create-novel.html',
 })
 export class CreateNovelComponent implements OnInit, OnDestroy {
@@ -46,6 +47,7 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
   coverBase64 = '';
   saveStatus = '';
   currentStatus: 'draft' | 'writing' | 'published' = 'writing';
+  freeDateError = '';
 
   genres: string[] = [
     'romance', 'comedy', 'girl love', 'boy love', 
@@ -68,11 +70,10 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
   novelId: number | null = null;
   isEditMode = false;
 
-  pricingModel: 'one_time' | 'early_access' | 'free' | 'per_chapter' = 'free';
+  pricingModel: 'one_time' | 'early_access' | 'free' = 'free';
   oneTimePrice = 0;
-  earlyAccessPrice = 0;
+  defaultChapterPrice = 0;
   earlyAccessDays = 7;
-  perChapterPrice = 0;
 
   editorConfig = {
     height: 500,
@@ -154,6 +155,65 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
     }
   }
 
+  // ✅ แก้ไข: ส่ง local datetime string ไปให้ backend จัดการ
+  validateFreeDate(chapter: Chapter) {
+    if (chapter.freeDateOnly) {
+      const time = chapter.freeTimeOnly || '00:00';
+      const fullDateTime = `${chapter.freeDateOnly}T${time}:00`;
+      
+      // ✅ แค่ validate ว่าเป็น datetime ที่ถูกต้อง
+      const selectedDate = new Date(fullDateTime);
+      
+      if (isNaN(selectedDate.getTime())) {
+        this.freeDateError = '❌ รูปแบบวันที่ไม่ถูกต้อง';
+        chapter.freeDateOnly = '';
+        chapter.freeDate = '';
+        setTimeout(() => this.freeDateError = '', 3000);
+        return;
+      }
+      
+      // ✅ ตรวจสอบว่าอนุญาตให้เลือกวัน/เวลาในอดีตไหม
+      if (selectedDate < new Date()) {
+        this.freeDateError = '❌ กรุณาเลือกเวลาในอนาคต';
+        chapter.freeTimeOnly = '';
+        chapter.freeDate = '';
+        setTimeout(() => this.freeDateError = '', 3000);
+        return;
+      }
+      
+      // ✅ ส่ง local datetime string ไปให้ backend แปลงเอา
+      chapter.freeDate = fullDateTime;
+      this.freeDateError = '';
+      this.saveStatus = '📅 อัปเดตวันปลดล็อคเรียบร้อย';
+      setTimeout(() => this.saveStatus = '', 1500);
+    } else {
+      chapter.freeDate = '';
+      chapter.freeTimeOnly = '';
+    }
+  }
+
+  onDateOnlyChange(chapter: Chapter) {
+    this.validateFreeDate(chapter);
+  }
+
+  onTimeOnlyChange(chapter: Chapter) {
+    if (chapter.freeDateOnly) {
+      this.validateFreeDate(chapter);
+    }
+  }
+
+  getPricingData(): { isPremium: boolean; novelPrice: number } {
+    switch(this.pricingModel) {
+      case 'one_time':
+        return { isPremium: true, novelPrice: this.oneTimePrice };
+      case 'early_access':
+        return { isPremium: true, novelPrice: 0 };
+      case 'free':
+      default:
+        return { isPremium: false, novelPrice: 0 };
+    }
+  }
+
   createNovelWithoutRedirect(status: 'draft' | 'writing' | 'published') {
     this.isSaving = true;
     const token = localStorage.getItem('token');
@@ -172,7 +232,8 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
         price: novelPrice,
         pricing_model: this.pricingModel,
         early_access_days: this.earlyAccessDays,
-        per_chapter_price: this.perChapterPrice
+        per_chapter_price: this.defaultChapterPrice,
+        early_access_price: this.defaultChapterPrice
       }
     };
 
@@ -194,20 +255,7 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
     });
   }
 
-  getPricingData(): { isPremium: boolean; novelPrice: number } {
-    switch(this.pricingModel) {
-      case 'one_time':
-        return { isPremium: true, novelPrice: this.oneTimePrice };
-      case 'early_access':
-        return { isPremium: true, novelPrice: 0 };
-      case 'per_chapter':
-        return { isPremium: true, novelPrice: 0 };
-      case 'free':
-      default:
-        return { isPremium: false, novelPrice: 0 };
-    }
-  }
-
+  // ✅ แก้ไข: การแสดงผลเวลาจาก backend
   async loadNovelData() {
     try {
       const novel: any = await firstValueFrom(
@@ -225,7 +273,9 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
         this.selectedCover = '';
       }
       
-      if (novel.pricing_model) {
+      if (novel.pricing_model === 'per_chapter') {
+        this.pricingModel = 'early_access';
+      } else if (novel.pricing_model) {
         this.pricingModel = novel.pricing_model;
       } else if (novel.is_premium) {
         this.pricingModel = novel.price > 0 ? 'one_time' : 'early_access';
@@ -233,30 +283,51 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
         this.pricingModel = 'free';
       }
       
-      this.oneTimePrice = novel.price || 0;
+      this.oneTimePrice = Math.floor(novel.price || 0);
       this.earlyAccessDays = novel.early_access_days || 7;
-      this.perChapterPrice = novel.per_chapter_price || 0;
+      this.defaultChapterPrice = novel.per_chapter_price || novel.early_access_price || 0;
       
       const chapters: any[] = await firstValueFrom(
         this.http.get<any[]>(`${this.apiUrl}/novels/${this.novelId}/chapters`)
       );
-      
-      console.log('📚 Chapters from API:', chapters);
       
       this.chapters = [];
       this.nextId = 1;
       
       if (chapters && chapters.length > 0) {
         chapters.forEach((ch) => {
+          let freeDateOnly = '';
+          let freeTimeOnly = '';
+
+          if (ch.free_date) {
+            // ✅ ใช้ toLocaleString แทนการบวก hardcode
+            const utcDate = new Date(ch.free_date);
+            
+            // แปลง UTC → Local time (Asia/Bangkok)
+            const bangkokDate = new Date(utcDate.toLocaleString('en-US', { 
+              timeZone: 'Asia/Bangkok' 
+            }));
+            
+            const yyyy = bangkokDate.getFullYear();
+            const mm = String(bangkokDate.getMonth() + 1).padStart(2, '0');
+            const dd = String(bangkokDate.getDate()).padStart(2, '0');
+            const hh = String(bangkokDate.getHours()).padStart(2, '0');
+            const min = String(bangkokDate.getMinutes()).padStart(2, '0');
+
+            freeDateOnly = `${yyyy}-${mm}-${dd}`;
+            freeTimeOnly = `${hh}:${min}`;
+          }
+
           const chapter: Chapter = {
             id: ch.id,
             order: ch.chapter_no,
             title: ch.title || `ตอนที่ ${ch.chapter_no}`,
             content: ch.content || '',
             published: true,
-            price: ch.price || 0,
-            earlyAccessPrice: ch.early_access_price || ch.price || 0,
-            freeDate: ch.free_date,
+            price: ch.early_access_price || ch.price || 0,
+            freeDate: ch.free_date || '',
+            freeDateOnly,
+            freeTimeOnly,
             comments: []
           };
           this.chapters.push(chapter);
@@ -366,8 +437,10 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
       title: '',
       content: '',
       published: false,
-      price: 0,
-      earlyAccessPrice: this.earlyAccessPrice,
+      price: undefined,
+      freeDate: '',
+      freeDateOnly: '',
+      freeTimeOnly: '',
       comments: [],
     };
     this.chapters.push(ch);
@@ -450,7 +523,8 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
         price: novelPrice,
         pricing_model: this.pricingModel,
         early_access_days: this.earlyAccessDays,
-        per_chapter_price: this.perChapterPrice
+        per_chapter_price: this.defaultChapterPrice,
+        early_access_price: this.defaultChapterPrice
       }
     };
 
@@ -500,12 +574,13 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
         price: novelPrice,
         pricing_model: this.pricingModel,
         early_access_days: this.earlyAccessDays,
-        per_chapter_price: this.perChapterPrice
+        per_chapter_price: this.defaultChapterPrice,
+        early_access_price: this.defaultChapterPrice
       }
     };
 
     if (this.coverBase64) {
-      novelData.cover_content = this.coverBase64;
+      novelData.cover_path = this.coverBase64;
     }
 
     const statusText = finalStatus === 'published' ? 'เผยแพร่' : (finalStatus === 'draft' ? 'บันทึกร่าง' : 'บันทึกอัตโนมัติ');
@@ -568,16 +643,26 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
           
           chaptersToSave.forEach((ch, index) => {
             const chapterNo = index + 1;
-            
             let chapterPrice = 0;
+            let earlyAccessPrice = 0;
+            let freeDate = null;
             
-            if (this.pricingModel === 'per_chapter') {
-              chapterPrice = ch.price ?? this.perChapterPrice;
-              if (chapterNo === 1 && chapterPrice === 0) {
+            if (this.pricingModel === 'early_access') {
+              const basePrice = (ch.price !== undefined && ch.price !== null) ? ch.price : this.defaultChapterPrice;
+              
+              // ✅ ส่ง local datetime string ไปให้ backend จัดการ
+              if (ch.freeDate) {
+                freeDate = ch.freeDate; // ส่ง "2024-12-25T15:30:00" ไปเลย
                 chapterPrice = 0;
+                earlyAccessPrice = basePrice;
+              } else {
+                chapterPrice = basePrice;
+                earlyAccessPrice = 0;
               }
-            } else if (this.pricingModel === 'early_access') {
-              chapterPrice = ch.earlyAccessPrice ?? this.earlyAccessPrice;
+            } else if (this.pricingModel === 'one_time') {
+              chapterPrice = 0;
+            } else {
+              chapterPrice = 0;
             }
             
             const chapterData: any = {
@@ -586,8 +671,9 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
               price: chapterPrice
             };
             
-            if (this.pricingModel === 'early_access' && ch.freeDate) {
-              chapterData.free_date = ch.freeDate;
+            if (this.pricingModel === 'early_access') {
+              chapterData.early_access_price = earlyAccessPrice;
+              chapterData.free_date = freeDate;
             }
             
             if (existingMap.has(chapterNo)) {

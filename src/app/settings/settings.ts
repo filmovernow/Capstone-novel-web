@@ -8,7 +8,7 @@ import { ChangeDetectorRef } from '@angular/core';
 @Component({
   selector: 'app-settings',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule],
   templateUrl: './settings.html',
 })
 export class SettingsComponent implements OnInit {
