@@ -36,8 +36,9 @@ export class NavbarComponent implements OnInit {
   
   books: Novel[] = [];
   apiUrl = 'http://localhost:3000/api/v1';
+  baseUrl = 'http://localhost:3000';
 
-  @Output() searchEvent = new EventEmitter<string>(); // ✅ ส่งค่าการค้นหากลับไปให้หน้า home
+  @Output() searchEvent = new EventEmitter<string>();
 
   constructor(
     private userService: UserService,
@@ -70,6 +71,61 @@ export class NavbarComponent implements OnInit {
     });
   }
   
+  // ฟังก์ชันตรวจสอบว่าเป็น URL ที่ใช้งานได้หรือไม่
+  isValidCoverUrl(coverPath: string | null): boolean {
+    if (!coverPath) return false;
+    // เช็คว่าเป็น http URL หรือมีนามสกุลไฟล์รูป หรือมี slash
+    return coverPath.startsWith('http') || 
+           coverPath.includes('.jpg') || 
+           coverPath.includes('.png') || 
+           coverPath.includes('.jpeg') || 
+           coverPath.includes('.gif') ||
+           coverPath.includes('.webp') ||
+           coverPath.startsWith('/');
+  }
+  
+  // ฟังก์ชันสร้าง URL รูปแบบเต็ม
+  getFullCoverUrl(coverPath: string | null): string {
+    if (!coverPath) return '';
+    
+    // ถ้าเป็น URL เต็มแล้ว
+    if (coverPath.startsWith('http://') || coverPath.startsWith('https://')) {
+      return coverPath;
+    }
+    
+    // ถ้าขึ้นต้นด้วย / (relative path)
+    if (coverPath.startsWith('/')) {
+      return `${this.baseUrl}${coverPath}`;
+    }
+    
+    // ถ้าเป็นแค่ชื่อไฟล์
+    return `${this.baseUrl}/uploads/${coverPath}`;
+  }
+  
+  // ฟังก์ชันจัดการกรณีรูปโหลดไม่สำเร็จ
+  onImageError(book: Novel) {
+    book.cover_path = null;
+    this.cdr.detectChanges();
+  }
+  
+  // ฟังก์ชันแสดงอีโมจิแทนรูป
+  getCoverEmoji(coverPath: string | null): string {
+    if (!coverPath) return '📖';
+    
+    // ถ้า cover_path เป็นอีโมจิโดยตรง
+    const emojiRegex = /[\u{1F300}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/u;
+    if (emojiRegex.test(coverPath) && coverPath.length <= 4) {
+      return coverPath;
+    }
+    
+    // ถ้ามีข้อความสั้นๆ อาจเป็นอีโมจิ
+    if (coverPath.length <= 3) {
+      return coverPath;
+    }
+    
+    return '📖';
+  }
+  
   navigateToAdmin() {
     this.profileOpen = false;
     this.router.navigate(['/admin/dashboard']);
@@ -78,6 +134,7 @@ export class NavbarComponent implements OnInit {
   get isAdmin(): boolean {
     return this.currentUser?.role === 'admin' || this.currentUser?.username === 'admin';
   }
+  
   logout() {
     this.userService.logout();
     this.router.navigate(['/auth']);
@@ -105,7 +162,7 @@ export class NavbarComponent implements OnInit {
     if (!q) {
       this.searchResults = [];
       this.searchDone = false;
-      this.searchEvent.emit(''); // ✅ ส่งค่าว่างกลับไป
+      this.searchEvent.emit('');
       return;
     }
     this.searchResults = this.books.filter(b =>
@@ -113,7 +170,7 @@ export class NavbarComponent implements OnInit {
       (b.pen_name || '').toLowerCase().includes(q)
     ).slice(0, 5);
     this.searchDone = true;
-    this.searchEvent.emit(this.search); // ✅ ส่งค่าค้นหากลับไป
+    this.searchEvent.emit(this.search);
   }
   
   clearSearch() {

@@ -1,4 +1,3 @@
-// create-novel.ts
 import { Component, ChangeDetectorRef, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -43,6 +42,7 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
   selectedGenres: string[] = [];
   selectedTags: string[] = [];
   selectedCover = '📖';
+  selectedCoverEmoji = '📖';
   coverImageUrl = '';
   coverBase64 = '';
   saveStatus = '';
@@ -119,7 +119,7 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
   }
 
   goBack() {
-    this.router.navigate(['/']);
+    this.router.navigate(['/writer']);
   }
 
   ngOnDestroy() {
@@ -155,13 +155,11 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
     }
   }
 
-  // ✅ แก้ไข: ส่ง local datetime string ไปให้ backend จัดการ
   validateFreeDate(chapter: Chapter) {
     if (chapter.freeDateOnly) {
       const time = chapter.freeTimeOnly || '00:00';
       const fullDateTime = `${chapter.freeDateOnly}T${time}:00`;
       
-      // ✅ แค่ validate ว่าเป็น datetime ที่ถูกต้อง
       const selectedDate = new Date(fullDateTime);
       
       if (isNaN(selectedDate.getTime())) {
@@ -172,7 +170,6 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
         return;
       }
       
-      // ✅ ตรวจสอบว่าอนุญาตให้เลือกวัน/เวลาในอดีตไหม
       if (selectedDate < new Date()) {
         this.freeDateError = '❌ กรุณาเลือกเวลาในอนาคต';
         chapter.freeTimeOnly = '';
@@ -181,7 +178,6 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
         return;
       }
       
-      // ✅ ส่ง local datetime string ไปให้ backend แปลงเอา
       chapter.freeDate = fullDateTime;
       this.freeDateError = '';
       this.saveStatus = '📅 อัปเดตวันปลดล็อคเรียบร้อย';
@@ -239,6 +235,8 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
 
     if (this.coverBase64) {
       novelData.cover_content = this.coverBase64;
+    } else if (this.selectedCoverEmoji && !this.coverImageUrl) {
+      novelData.cover_emoji = this.selectedCoverEmoji;
     }
 
     this.http.post(`${this.apiUrl}/novels`, novelData, { headers }).subscribe({
@@ -255,7 +253,6 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
     });
   }
 
-  // ✅ แก้ไข: การแสดงผลเวลาจาก backend
   async loadNovelData() {
     try {
       const novel: any = await firstValueFrom(
@@ -269,8 +266,15 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
       this.currentStatus = novel.status || 'writing';
       
       if (novel.cover_path) {
-        this.coverImageUrl = novel.cover_path;
-        this.selectedCover = '';
+        if (novel.cover_path.startsWith('http')) {
+          this.coverImageUrl = novel.cover_path;
+          this.selectedCover = '';
+          this.selectedCoverEmoji = '';
+        } else if (novel.cover_path && novel.cover_path.length <= 5 && !novel.cover_path.includes('/')) {
+          this.selectedCoverEmoji = novel.cover_path;
+          this.selectedCover = novel.cover_path;
+          this.coverImageUrl = '';
+        }
       }
       
       if (novel.pricing_model === 'per_chapter') {
@@ -300,10 +304,7 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
           let freeTimeOnly = '';
 
           if (ch.free_date) {
-            // ✅ ใช้ toLocaleString แทนการบวก hardcode
             const utcDate = new Date(ch.free_date);
-            
-            // แปลง UTC → Local time (Asia/Bangkok)
             const bangkokDate = new Date(utcDate.toLocaleString('en-US', { 
               timeZone: 'Asia/Bangkok' 
             }));
@@ -401,7 +402,15 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
         const base64 = e.target.result.split(',')[1];
         this.coverBase64 = base64;
         this.selectedCover = '';
+        this.selectedCoverEmoji = '';
         this.cdr.detectChanges();
+        
+        // ✅ เซฟอัตโนมัติเมื่ออัปโหลดรูป (แต่ไม่ redirect)
+        if (this.isEditMode && this.novelId) {
+          this.updateNovel(this.currentStatus, false);
+        }
+        
+        this.saveStatus = '✨ อัปโหลดรูปปกเรียบร้อย กำลังเซฟ...';
       };
       reader.onerror = () => {
         alert('เกิดข้อผิดพลาดในการอ่านไฟล์');
@@ -413,19 +422,29 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
   removeCoverImage() {
     this.coverImageUrl = '';
     this.coverBase64 = '';
+    this.selectedCoverEmoji = '📖';
     this.selectedCover = '📖';
+    
+    // ✅ เซฟอัตโนมัติเมื่อลบรูป (แต่ไม่ redirect)
     if (this.isEditMode && this.novelId) {
       this.updateNovel(this.currentStatus, false);
     }
+    
+    this.saveStatus = '✨ ลบรูปปกเรียบร้อย กำลังเซฟ...';
   }
 
   selectEmojiCover(emoji: string) {
+    this.selectedCoverEmoji = emoji;
     this.selectedCover = emoji;
     this.coverImageUrl = '';
     this.coverBase64 = '';
+    
+    // ✅ เซฟอัตโนมัติเมื่อเลือกอีโมจิ (แต่ไม่ redirect)
     if (this.isEditMode && this.novelId) {
       this.updateNovel(this.currentStatus, false);
     }
+    
+    this.saveStatus = '✨ เปลี่ยนปกเรียบร้อย กำลังเซฟ...';
   }
 
   addChapter() {
@@ -465,20 +484,6 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
     }
   }
 
-  addComment(content: string) {
-    if (!this.activeChapter || !content.trim()) return;
-    const comment: Comment = {
-      id: Date.now(),
-      username: 'ผู้อ่าน' + Math.floor(Math.random() * 1000),
-      avatar: '👤',
-      content: content.trim(),
-      timestamp: new Date(),
-      likes: 0,
-    };
-    if (!this.activeChapter.comments) this.activeChapter.comments = [];
-    this.activeChapter.comments.push(comment);
-  }
-
   saveChapter() {
     this.saveStatus = '✓ บันทึกตอนนี้แล้ว';
     setTimeout(() => this.saveStatus = '', 2000);
@@ -486,9 +491,9 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
 
   saveDraft() {
     if (this.isEditMode && this.novelId) {
-      this.updateNovel('draft', true);
+      this.updateNovel('draft', true);  // ✅ redirect
     } else {
-      this.createNovel('draft', true);
+      this.createNovel('draft', true);  // ✅ redirect
     }
   }
 
@@ -499,9 +504,9 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
     }
 
     if (this.isEditMode && this.novelId) {
-      this.updateNovel('published', true);
+      this.updateNovel('published', true);  // ✅ redirect
     } else {
-      this.createNovel('published', true);
+      this.createNovel('published', true);  // ✅ redirect
     }
   }
 
@@ -530,6 +535,8 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
 
     if (this.coverBase64) {
       novelData.cover_content = this.coverBase64;
+    } else if (this.selectedCoverEmoji && !this.coverImageUrl) {
+      novelData.cover_emoji = this.selectedCoverEmoji;
     }
 
     const statusText = status === 'published' ? 'เผยแพร่' : (status === 'draft' ? 'บันทึกร่าง' : 'บันทึกอัตโนมัติ');
@@ -580,7 +587,9 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
     };
 
     if (this.coverBase64) {
-      novelData.cover_path = this.coverBase64;
+      novelData.cover_content = this.coverBase64;
+    } else if (this.selectedCoverEmoji && !this.coverImageUrl) {
+      novelData.cover_emoji = this.selectedCoverEmoji;
     }
 
     const statusText = finalStatus === 'published' ? 'เผยแพร่' : (finalStatus === 'draft' ? 'บันทึกร่าง' : 'บันทึกอัตโนมัติ');
@@ -591,14 +600,11 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
         this.currentStatus = finalStatus;
         this.saveStatus = `✅ ${statusText}สำเร็จ!`;
         
-        if (shouldRedirect && (finalStatus === 'draft' || finalStatus === 'published')) {
+        // ✅ redirect เฉพาะเมื่อควร redirect เท่านั้น
+        if (shouldRedirect) {
           setTimeout(() => {
             this.router.navigate(['/writer']);
           }, 500);
-        } else if (finalStatus === 'published') {
-          setTimeout(() => {
-            this.router.navigate(['/writer']);
-          }, 1000);
         } else {
           setTimeout(() => this.saveStatus = '', 2000);
         }
@@ -650,9 +656,8 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
             if (this.pricingModel === 'early_access') {
               const basePrice = (ch.price !== undefined && ch.price !== null) ? ch.price : this.defaultChapterPrice;
               
-              // ✅ ส่ง local datetime string ไปให้ backend จัดการ
               if (ch.freeDate) {
-                freeDate = ch.freeDate; // ส่ง "2024-12-25T15:30:00" ไปเลย
+                freeDate = ch.freeDate;
                 chapterPrice = 0;
                 earlyAccessPrice = basePrice;
               } else {
@@ -695,9 +700,6 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
               this.isSaving = false;
               if (shouldRedirect && (novelStatus === 'draft' || novelStatus === 'published')) {
                 this.router.navigate(['/writer']);
-              } else {
-                this.saveStatus = '✅ บันทึกสำเร็จ';
-                setTimeout(() => this.saveStatus = '', 2000);
               }
             },
             error: (err) => {

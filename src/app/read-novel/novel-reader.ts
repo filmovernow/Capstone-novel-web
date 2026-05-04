@@ -74,7 +74,6 @@ export class NovelReaderComponent implements OnInit, OnDestroy {
   private currentChapterSub: any = null;
   private canGoBack = false;
   
-  // ✅ เพิ่มตัวแปรจำสถานะเผื่อโหลดไม่สำเร็จ
   private previousChapterId = 0;
 
   constructor(
@@ -225,7 +224,7 @@ export class NovelReaderComponent implements OnInit, OnDestroy {
     return null;
   }
 
-async loadAllData() {
+  async loadAllData() {
     if (this.isLoading) return;
     this.isLoading = true;
     
@@ -240,7 +239,20 @@ async loadAllData() {
       this.novelDescription = novel.description || '';
       this.novelTitle = novel.title || '';
       this.authorName = novel.pen_name || 'ไม่ทราบผู้แต่ง';
-      this.coverPath = novel.cover_path || '';
+      
+      // ✅ จัดการ cover_path ให้รองรับทั้ง URL และ Emoji
+      if (novel.cover_path) {
+        if (novel.cover_path.startsWith('http') || novel.cover_path.includes('/')) {
+          this.coverPath = novel.cover_path;
+        } else if (novel.cover_path.length <= 5) {
+          this.coverPath = novel.cover_path;
+        } else {
+          this.coverPath = novel.cover_path;
+        }
+      } else {
+        this.coverPath = '';
+      }
+      
       this.genres = novel.genres || [];
       this.followCount = novel.follow_count || 0;
       this.isFollowing = novel.is_followed === true;
@@ -283,7 +295,6 @@ async loadAllData() {
            freeDateObj = new Date(ch.free_date);
         }
 
-        // เช็คเงื่อนไขการจ่ายเงินตาม Model ต่างๆ
         if (this.pricingModel === 'early_access') {
           if (freeDateObj && new Date() < freeDateObj) {
             isEarlyAccess = true;
@@ -295,11 +306,9 @@ async loadAllData() {
             isPaid = true;
           }
         } else if (this.pricingModel === 'per_chapter' || this.pricingModel === 'one_time') {
-          // ถ้าไม่ใช่บทนำ (ID 0) และมีราคา หรืออยู่ในโมเดลที่ต้องจ่าย ให้ถือว่าเป็น Paid
           isPaid = price > 0 || this.pricingModel === 'one_time';
         }
 
-        // ตัดสินการล็อคเนื้อหา
         if (this.hasAccessToNovel) {
            needsPurchase = false;
            isDisabled = false;
@@ -309,7 +318,6 @@ async loadAllData() {
                  needsPurchase = false;
                  isDisabled = false;
               } else if (this.pricingModel === 'one_time') {
-                 // ✅ สำหรับโหมดซื้อทั้งเรื่อง ให้เซตเป็น True เพื่อโชว์ป้าย 🔒 ใน HTML
                  needsPurchase = true; 
                  isDisabled = true; 
               } else {
@@ -352,7 +360,6 @@ async loadAllData() {
         ...mappedChapters
       ];
       
-      // บังคับให้ Angular รับรู้การเปลี่ยนแปลงของ Array
       this.chapters = [...this.chapters];
 
       // 6. กำหนดตอนเริ่มต้นที่จะแสดง
@@ -540,7 +547,6 @@ async loadAllData() {
   }
 
   private doLoadChapter(id: number) {
-    // ✅ จำตอนที่กำลังอ่านไว้ก่อน เผื่อโดนระบบเด้งกลับ
     this.previousChapterId = this.activeChapterId; 
     this.activeChapterId = id;
     this.loadChapter(id);
@@ -588,12 +594,10 @@ async loadAllData() {
           this.safeContent = this.sanitizer.bypassSecurityTrustHtml(rawContent);
           this.currentLoadingChapterId = null;
           
-          // ✅ โหลดผ่านฉลุย ค่อยบันทึกว่าอ่านถึงไหน
           this.saveProgressAndHistory(id);
           this.cdr.detectChanges();
         },
         error: (err) => {
-          // ✅ ถ้าเกิด Error แปลว่าโหลดไม่ผ่าน (เช่น โดนล็อคกุญแจ) ให้ถอยกลับไปตอนก่อนหน้าทันที
           this.activeChapterId = this.previousChapterId;
           
           if (err.status === 402 && err.error) {

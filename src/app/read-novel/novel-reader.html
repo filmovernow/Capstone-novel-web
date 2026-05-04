@@ -105,7 +105,6 @@
           
           <span class="line-clamp-2 flex-1 break-word" [class.text-[#5C469C]]="ch.isDisabled">{{ch.title}}</span>
           
-          <!-- ✅ ดีไซน์ป้ายสถานะในแถบสารบัญ[cite: 5] -->
           <ng-container *ngIf="!hasAccessToNovel">
             <span *ngIf="ch.isDisabled && pricingModel === 'one_time'" 
                   class="text-[8px] text-[#D4ADFC] shrink-0 bg-[#5C469C]/30 px-1.5 py-0.5 rounded-full whitespace-nowrap border border-[#D4ADFC]/15">
@@ -176,7 +175,6 @@
             <span class="text-sm font-medium text-white">ย้อนกลับ</span>
           </button>
           
-          <!-- ✅ ดีไซน์ป้ายสถานะบนปุ่มอ่านต่อด้านล่าง[cite: 5] -->
           <button (click)="nextChapter()"
                   [disabled]="isNextDisabled() && (pricingModel !== 'one_time' || hasAccessToNovel)"
                   class="flex-1 rounded-xl border border-[#5C469C]/35 bg-[#1D267D]/50 p-4 text-right hover:bg-[#5C469C]/30 transition-all group disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-end">
@@ -208,7 +206,27 @@
     <aside class="sticky top-[72px] self-start pl-4 space-y-4">
       <div class="rounded-2xl border border-[#5C469C]/30 bg-[#1D267D]/45 p-4">
         <div class="mb-3 text-[11px] font-bold uppercase tracking-widest text-[#7B6FA0]">เกี่ยวกับนิยาย</div>
-        <img *ngIf="coverPath" [src]="coverPath" class="w-full rounded-xl object-cover mb-3"/>
+        
+        <!-- ✅ ปกนิยาย รองรับทั้งรูปและอีโมจิ -->
+        <div class="mb-3">
+          <!-- ถ้าเป็น URL รูป -->
+          <img *ngIf="coverPath && (coverPath.includes('http') || coverPath.includes('/'))" 
+               [src]="coverPath" 
+               class="w-full rounded-xl object-cover" />
+          
+          <!-- ถ้าเป็น Emoji -->
+          <div *ngIf="coverPath && !coverPath.includes('http') && !coverPath.includes('/') && coverPath.length <= 5" 
+               class="w-full h-48 rounded-xl bg-gradient-to-br from-[#5C469C] to-[#1D267D] flex items-center justify-center text-8xl">
+            {{coverPath}}
+          </div>
+          
+          <!-- default ถ้าไม่มีปก -->
+          <div *ngIf="!coverPath" 
+               class="w-full h-48 rounded-xl bg-gradient-to-br from-[#5C469C] to-[#1D267D] flex items-center justify-center text-8xl">
+            📖
+          </div>
+        </div>
+        
         <h4 class="text-sm font-medium text-white line-clamp-2 break-word">{{ novelTitle }}</h4>
         <p class="text-[11px] text-[#7B6FA0] break-word">โดย <span>{{ authorName }}</span></p>
         

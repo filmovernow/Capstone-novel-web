@@ -1,4 +1,3 @@
-// writer.ts
 import { Component, OnInit, ChangeDetectorRef, HostListener, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, Router, ActivatedRoute, NavigationEnd } from '@angular/router';
@@ -131,7 +130,6 @@ export class WriterComponent implements OnInit, OnDestroy {
         this.http.get<any[]>(`${this.apiUrl}/novels/my_novels`, { headers: this.getHeaders() })
       );
       
-      // ดึงยอดไลค์รวมของแต่ละนิยายจากทุก chapter
       const novelsWithTotalLikes = await Promise.all(
         novels.map(async (novel) => {
           try {

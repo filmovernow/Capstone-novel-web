@@ -1,11 +1,11 @@
 <div class="bg-[#0C134F] text-[#D4ADFC] min-h-screen font-sans">
 
-  <!-- NAVBAR (คงเดิม แต่เพิ่มแถวเหรียญ) -->
+  <!-- NAVBAR -->
   <nav [class]="'fixed top-0 w-full z-50 transition-all duration-300 border-b ' + (scrolled ? 'bg-[#0C134F]/90 backdrop-blur border-[#1D267D] shadow' : 'bg-transparent border-transparent')">
     <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
 
       <div (click)="goHome()" class="flex items-center gap-2 cursor-pointer">
-        <img src="logo.png" class="h-8">
+        <img src="logo.png" class="h-8" onerror="this.style.display='none'">
         <span class="text-[#D4ADFC] font-semibold">My Novels</span>
       </div>
 
@@ -25,10 +25,7 @@
               <span class="text-[#7B6FA0]">▾</span>
             </button>
 
-            <!-- ✅ dropdown ที่ปรับปรุงใหม่ มีเหรียญ -->
             <div *ngIf="profileOpen" class="absolute right-0 top-full mt-2 w-64 bg-[#1D267D] border border-[#5C469C]/50 rounded-2xl shadow-2xl shadow-black/50 overflow-hidden z-50">
-              
-              <!-- Header พร้อม avatar -->
               <div class="px-4 py-3 border-b border-[#5C469C]/30 flex items-center gap-3">
                 <img *ngIf="currentUser?.avatar_path; else fallback" [src]="currentUser.avatar_path" class="w-8 h-8 rounded-full object-cover" />
                 <ng-template #fallback>
@@ -42,7 +39,6 @@
                 </div>
               </div>
 
-              <!-- ✅ แถวแสดงเหรียญ -->
               <div class="px-4 py-2 bg-gradient-to-r from-[#5C469C]/30 to-[#1D267D] border-b border-[#5C469C]/30">
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-2">
@@ -56,7 +52,6 @@
                 </div>
               </div>
 
-              <!-- Menu items -->
               <div class="py-1.5">
                 <div (click)="navigateTo('/writer')" class="flex items-center gap-3 px-4 py-2.5 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30 hover:text-white transition-colors cursor-pointer">
                   <span>✍️</span> เขียนนิยาย
@@ -68,9 +63,7 @@
                   <span>⚙️</span> ตั้งค่าบัญชี
                 </div>
               </div>
-              
 
-              <!-- Logout -->
               <div class="border-t border-[#5C469C]/30 py-1.5">
                 <button (click)="logout()" class="w-full text-left px-4 py-2 text-sm text-[#ff9eb5] hover:bg-[#ff6f91]/10">🚪 ออกจากระบบ</button>
               </div>
@@ -81,7 +74,7 @@
     </div>
   </nav>
 
-  <!-- ส่วนที่เหลือเหมือนเดิม -->
+  <!-- MAIN CONTENT -->
   <div class="max-w-7xl mx-auto px-6 pt-24 pb-16">
 
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10">
@@ -95,6 +88,7 @@
       </div>
     </div>
 
+    <!-- STATS CARDS -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
       <div *ngFor="let stat of stats"
         class="bg-[#1D267D]/60 border border-[#5C469C]/30 rounded-2xl p-4 flex flex-col gap-1">
@@ -104,6 +98,7 @@
       </div>
     </div>
 
+    <!-- TABS -->
     <div class="flex gap-2 mb-6 flex-wrap">
       <button *ngFor="let tab of tabs"
         (click)="selectedTab = tab.key"
@@ -115,16 +110,36 @@
       </button>
     </div>
 
+    <!-- LOADING -->
     <div *ngIf="loading" class="flex justify-center py-20">
       <div class="text-[#7B6FA0]">กำลังโหลด...</div>
     </div>
 
+    <!-- NOVELS GRID -->
     <div *ngIf="!loading" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
       <div *ngFor="let novel of filteredNovels; let i = index"
         class="bg-[#1D267D]/60 border border-[#5C469C]/30 rounded-2xl overflow-hidden hover:border-[#D4ADFC]/40 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group">
 
+        <!-- COVER SECTION - รองรับทั้งรูปและอีโมจิ -->
         <div class="h-32 bg-gradient-to-br relative flex items-end p-4" [class]="getBgClass(i)">
-          <img *ngIf="novel.cover_path" [src]="novel.cover_path" class="absolute inset-0 w-full h-full object-cover opacity-40">
+          
+          <!-- กรณีเป็นอีโมจิ -->
+          <div *ngIf="novel.cover_path && novel.cover_path.length <= 5 && !novel.cover_path.includes('http') && !novel.cover_path.includes('/')" 
+               class="absolute inset-0 flex items-center justify-center text-6xl opacity-60">
+            {{novel.cover_path}}
+          </div>
+          
+          <!-- กรณีเป็นรูป -->
+          <img *ngIf="novel.cover_path && (novel.cover_path.includes('http') || novel.cover_path.includes('/'))" 
+               [src]="novel.cover_path" 
+               class="absolute inset-0 w-full h-full object-cover opacity-40">
+          
+          <!-- default ถ้าไม่มีปก -->
+          <div *ngIf="!novel.cover_path" 
+               class="absolute inset-0 flex items-center justify-center text-6xl opacity-60">
+            📖
+          </div>
+          
           <span class="absolute top-3 right-3 text-3xl opacity-60 group-hover:opacity-100 transition-opacity">📖</span>
           <span class="text-[10px] font-bold px-2.5 py-1 rounded-full z-10" [ngClass]="getStatusClass(novel.status)">
             {{getStatusLabel(novel.status)}}
@@ -133,11 +148,12 @@
 
         <div class="p-4">
           <h3 class="text-white font-semibold text-sm mb-1 line-clamp-1">{{novel.title}}</h3>
-          <p class="text-[#7B6FA0] text-xs mb-3 line-clamp-2">{{novel.description}}</p>
+          <p class="text-[#7B6FA0] text-xs mb-3 line-clamp-2">{{novel.description || 'ยังไม่มีเรื่องย่อ'}}</p>
 
           <div class="flex gap-1 flex-wrap mb-3">
             <span *ngFor="let g of novel.genres"
               class="text-[10px] bg-[#5C469C]/40 text-[#D4ADFC] px-2 py-0.5 rounded-full">{{g.name}}</span>
+            <span *ngIf="!novel.genres || novel.genres.length === 0" class="text-[10px] text-[#7B6FA0]">ไม่มีแนว</span>
           </div>
 
           <div class="flex justify-between text-xs text-[#7B6FA0] mb-4">
@@ -163,14 +179,15 @@
 
       </div>
 
+      <!-- EMPTY STATE -->
       <div *ngIf="filteredNovels.length === 0"
         class="col-span-full flex flex-col items-center justify-center py-20 text-center">
         <div class="text-6xl mb-4 opacity-40">📝</div>
         <p class="text-[#7B6FA0] text-sm">ยังไม่มีนิยายในหมวดนี้</p>
-        <a routerLink="/writer/create"
-          class="mt-4 text-sm text-[#D4ADFC] hover:text-[#B085E8] underline transition-colors">
+        <div (click)="createNovel()"
+          class="mt-4 text-sm text-[#D4ADFC] hover:text-[#B085E8] underline transition-colors cursor-pointer">
           สร้างนิยายใหม่ →
-        </a>
+        </div>
       </div>
 
     </div>

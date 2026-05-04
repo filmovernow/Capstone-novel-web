@@ -1,5 +1,3 @@
-<!-- home.html ที่แก้ไขแล้ว -->
-
 <div class="bg-[#0C134F] text-[#D4ADFC] min-h-screen font-sans">
 
   <app-navbar (searchEvent)="onNavbarSearch($event)"></app-navbar>
@@ -20,12 +18,20 @@
     <!-- SEARCH RESULTS DROPDOWN -->
     <div *ngIf="searchResults.length > 0" class="max-w-2xl mx-auto mt-2 text-left bg-[#1D267D] border border-[#5C469C]/60 rounded-2xl overflow-hidden shadow-xl z-40 relative">
       <div *ngFor="let b of searchResults" [routerLink]="['/read', b.id]" class="flex items-center gap-3 px-4 py-3 hover:bg-[#5C469C]/30 cursor-pointer transition-colors border-b border-[#5C469C]/20 last:border-none">
-        <img *ngIf="b.cover_path" [src]="b.cover_path" class="w-10 h-10 rounded-lg object-cover shrink-0" />
-        <div *ngIf="!b.cover_path" class="w-10 h-10 rounded-lg bg-[#1D267D] flex items-center justify-center text-xs text-[#9B8CC4] shrink-0">📖</div>
+        
+        <div class="w-10 h-10 rounded-lg overflow-hidden bg-[#1D267D] flex items-center justify-center shrink-0">
+          <img *ngIf="b.cover_path && (b.cover_path.includes('http') || b.cover_path.includes('.jpg') || b.cover_path.includes('.png') || b.cover_path.includes('/'))" 
+              [src]="b.cover_path" 
+              class="w-full h-full object-cover" />
+          
+          <span *ngIf="!b.cover_path || (!b.cover_path.includes('http') && !b.cover_path.includes('.jpg') && !b.cover_path.includes('.png') && !b.cover_path.includes('/'))" 
+                class="text-xl">
+            {{ (b.cover_path && b.cover_path.length <= 5 && !b.cover_path.includes('http') && !b.cover_path.includes('/')) ? b.cover_path : '📖' }}
+          </span>
+        </div>
+        
         <div class="flex-1 min-w-0">
-          <!-- ✅ ชื่อนิยาย ตัด 2 บรรทัด -->
           <p class="text-sm font-semibold text-white line-clamp-2 break-word">{{b.title}}</p>
-          <!-- ✅ ชื่อผู้เขียน ตัด 1 บรรทัด -->
           <p class="text-xs text-[#9B8CC4] line-clamp-1 break-word">{{b.pen_name || 'ไม่ระบุชื่อ'}}</p>
           <div class="flex items-center gap-2 mt-1">
             <span class="text-[10px] text-[#9B8CC4] flex items-center gap-0.5 shrink-0">❤️ {{ formatNumber(b.like_count || 0) }}</span>
@@ -49,31 +55,39 @@
       <section *ngIf="featuredNovel" class="mb-10">
         <div class="bg-gradient-to-r from-[#1D267D] to-[#5C469C] rounded-2xl p-6 md:p-8 flex flex-col md:flex-row gap-6 items-start border border-[#5C469C]/50">
           
+          <!-- ✅ ปก featured novel (รองรับทั้งรูปและอีโมจิ) -->
           <div class="shrink-0">
-            <img *ngIf="featuredNovel.cover_path" [src]="featuredNovel.cover_path" class="w-24 h-32 md:w-32 md:h-40 rounded-lg object-cover shadow-lg" />
-            <div *ngIf="!featuredNovel.cover_path" class="w-24 h-32 md:w-32 md:h-40 rounded-lg bg-gradient-to-br from-[#5C469C] to-[#1D267D] flex items-center justify-center text-5xl">
-              📖
+            <div *ngIf="featuredNovel.cover_path && (featuredNovel.cover_path.includes('http') || featuredNovel.cover_path.includes('/'))" 
+                class="w-24 h-32 md:w-32 md:h-40 rounded-lg overflow-hidden shadow-lg">
+              <img [src]="featuredNovel.cover_path" class="w-full h-full object-cover" />
+            </div>
+            <div *ngIf="!featuredNovel.cover_path || (featuredNovel.cover_path.length <= 5 && !featuredNovel.cover_path.includes('http') && !featuredNovel.cover_path.includes('/'))" 
+                class="w-24 h-32 md:w-32 md:h-40 rounded-lg bg-gradient-to-br from-[#5C469C] to-[#1D267D] flex items-center justify-center text-6xl shadow-lg">
+              {{ (featuredNovel.cover_path && featuredNovel.cover_path.length <= 5) ? featuredNovel.cover_path : '📖' }}
             </div>
           </div>
           
           <div class="flex-1 min-w-0">
             <p class="text-[#D4ADFC] text-xs font-bold tracking-widest uppercase mb-2">แนะนำพิเศษวันนี้</p>
-            <!-- ✅ ชื่อนิยาย featured -->
             <h2 class="text-2xl md:text-3xl font-semibold text-white mb-1 break-word line-clamp-2">{{ featuredNovel.title }}</h2>
-            <!-- ✅ ชื่อผู้เขียน -->
             <p class="text-[#9B8CC4] text-sm mb-3 break-word">
               โดย {{ featuredNovel.pen_name || 'ไม่ระบุชื่อ' }} · 
               อัปเดต {{ (featuredNovel.updated_at | date:'dd MMM yyyy') || 'ไม่ระบุวันที่' }}
             </p>
-            <!-- ✅ description 2 บรรทัดพอ -->
             <p class="text-[#C8BEE8] text-sm leading-relaxed mb-4 line-clamp-2 break-word">{{ featuredNovel.description || 'ยังไม่มีคำอธิบาย' }}</p>
             
-            <!-- ✅ แท็ก genres -->
+            <!-- ✅ แก้ไขตรงนี้: แสดง genres ไม่เกิน 3 อัน -->
             <div class="flex flex-wrap gap-2 mb-5">
-              <span *ngFor="let genre of (featuredNovel.genres || [])" 
-                    class="text-xs bg-[#0C134F]/60 border border-[#D4ADFC]/30 text-[#D4ADFC] px-3 py-1 rounded-full whitespace-nowrap">
-                {{ genre.name || genre }}
-              </span>
+              <ng-container *ngIf="featuredNovel.genres && featuredNovel.genres.length > 0">
+                <span *ngFor="let genre of (featuredNovel.genres | slice:0:3)" 
+                      class="text-xs bg-[#0C134F]/60 border border-[#D4ADFC]/30 text-[#D4ADFC] px-3 py-1 rounded-full whitespace-nowrap">
+                  {{ genre.name || genre }}
+                </span>
+                <span *ngIf="featuredNovel.genres.length > 3" 
+                      class="text-xs bg-[#5C469C]/50 text-[#D4ADFC] px-3 py-1 rounded-full whitespace-nowrap">
+                  +{{ featuredNovel.genres.length - 3 }}
+                </span>
+              </ng-container>
               <span *ngIf="!featuredNovel.genres || featuredNovel.genres.length === 0" 
                     class="text-xs bg-[#0C134F]/60 border border-[#D4ADFC]/30 text-[#D4ADFC] px-3 py-1 rounded-full">
                 นิยายทั่วไป
@@ -114,11 +128,22 @@
       </div>
 
       <!-- BOOK GRID -->
-      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+      <div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3">
         <div *ngFor="let book of displayBooks" [routerLink]="['/read', book.id]" class="bg-[#1D267D] rounded-2xl overflow-hidden border border-[#5C469C]/30 hover:-translate-y-2 hover:shadow-xl hover:shadow-[#000]/40 hover:border-[#D4ADFC]/50 transition-all duration-300 cursor-pointer group flex flex-col">
-          <div class="relative overflow-hidden shrink-0">
-            <img *ngIf="book.cover_path" [src]="book.cover_path" class="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-500" />
-            <div *ngIf="!book.cover_path" class="w-full h-48 bg-[#0C134F] flex items-center justify-center text-sm text-[#9B8CC4]">📖</div>
+          
+          <!-- ✅ ปกใน grid book (รองรับทั้งรูปและอีโมจิ) -->
+          <div class="relative overflow-hidden shrink-0 h-48">
+            <!-- กรณีเป็นรูป URL -->
+            <img *ngIf="book.cover_path && (book.cover_path.includes('http') || book.cover_path.includes('/'))" 
+                [src]="book.cover_path" 
+                class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+            
+            <!-- กรณีเป็นอีโมจิ -->
+            <div *ngIf="!book.cover_path || (book.cover_path.length <= 5 && !book.cover_path.includes('http') && !book.cover_path.includes('/'))" 
+                class="w-full h-full bg-[#0C134F] flex items-center justify-center text-7xl group-hover:scale-110 transition-transform duration-500">
+              {{ (book.cover_path && book.cover_path.length <= 5) ? book.cover_path : '📖' }}
+            </div>
+            
             <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-70"></div>
             
             <div class="absolute bottom-2 right-2 bg-black/60 backdrop-blur rounded-full px-2 py-0.5 text-[10px] text-white flex items-center gap-1.5">
@@ -127,14 +152,17 @@
               <span class="flex items-center gap-0.5">👁️ {{ formatNumber(book.view_count || 0) }}</span>
             </div>
           </div>
+          
           <div class="p-4 flex flex-col flex-1">
-            <!-- ✅ ชื่อนิยาย ตัด 2 บรรทัด -->
             <p class="font-semibold text-white text-sm mb-1 line-clamp-2 break-word min-h-[2.5rem]">{{book.title}}</p>
-            <!-- ✅ ชื่อผู้เขียน ตัด 1 บรรทัด -->
             <p class="text-xs text-[#9B8CC4] mb-3 line-clamp-1 break-word">{{book.pen_name || 'ไม่ระบุชื่อ'}}</p>
+            
+            <!-- ✅ แก้ไข: แสดง genres 3 อัน + แสดง +N ถ้ามีเกิน -->
             <div class="flex flex-wrap gap-1 mt-auto">
-              <span *ngFor="let g of book.genres | slice:0:2" class="text-[10px] bg-[#5C469C]/50 text-[#D4ADFC] px-2 py-0.5 rounded-full whitespace-nowrap">{{g.name}}</span>
-              <span *ngIf="book.genres && book.genres.length > 2" class="text-[10px] text-[#7B6FA0] px-1 shrink-0">+{{book.genres.length - 2}}</span>
+              <ng-container *ngIf="book.genres && book.genres.length > 0">
+                <span *ngFor="let g of book.genres | slice:0:3" class="text-[10px] bg-[#5C469C]/50 text-[#D4ADFC] px-2 py-0.5 rounded-full whitespace-nowrap">{{g.name}}</span>
+                <span *ngIf="book.genres.length > 3" class="text-[10px] text-[#D4ADFC] bg-[#5C469C]/50 px-2 py-0.5 rounded-full whitespace-nowrap">+{{book.genres.length - 3}}</span>
+              </ng-container>
               <span *ngIf="!book.genres || book.genres.length === 0" class="text-[10px] text-[#7B6FA0]">ไม่มีแนว</span>
             </div>
           </div>
@@ -204,9 +232,16 @@
             [routerLink]="['/read', book.id]" 
             (click)="closeAllBooksModal()"
             class="bg-[#0C134F]/60 rounded-xl overflow-hidden border border-[#5C469C]/30 hover:border-[#D4ADFC]/50 hover:-translate-y-1 transition-all duration-200 cursor-pointer group flex flex-col">
-          <div class="relative shrink-0">
-            <img *ngIf="book.cover_path" [src]="book.cover_path" class="w-full h-36 object-cover" />
-            <div *ngIf="!book.cover_path" class="w-full h-36 bg-[#0C134F] flex items-center justify-center text-3xl">📖</div>
+          
+          <!-- ✅ ปกใน modal (รองรับทั้งรูปและอีโมจิ) -->
+          <div class="relative shrink-0 h-36">
+            <img *ngIf="book.cover_path && (book.cover_path.includes('http') || book.cover_path.includes('/'))" 
+                 [src]="book.cover_path" 
+                 class="w-full h-full object-cover" />
+            <div *ngIf="!book.cover_path || (book.cover_path.length <= 5 && !book.cover_path.includes('http') && !book.cover_path.includes('/'))" 
+                 class="w-full h-full bg-[#0C134F] flex items-center justify-center text-5xl">
+              {{ (book.cover_path && book.cover_path.length <= 5) ? book.cover_path : '📖' }}
+            </div>
             <div class="absolute bottom-1 right-1 bg-black/60 backdrop-blur rounded-full px-1.5 py-0.5 text-[9px] text-white flex items-center gap-1">
               <span class="flex items-center gap-0.5">❤️ {{ formatNumber(book.like_count || 0) }}</span>
               <span class="w-0.5 h-0.5 rounded-full bg-white/40"></span>
@@ -214,9 +249,7 @@
             </div>
           </div>
           <div class="p-2 flex-1">
-            <!-- ✅ ชื่อนิยาย modal ตัด 2 บรรทัด -->
             <p class="font-semibold text-white text-xs line-clamp-2 break-word min-h-[2rem]">{{ book.title }}</p>
-            <!-- ✅ ชื่อผู้เขียน modal ตัด 1 บรรทัด -->
             <p class="text-[10px] text-[#9B8CC4] truncate break-word mt-1">{{ book.pen_name || 'ไม่ระบุชื่อ' }}</p>
           </div>
         </div>
