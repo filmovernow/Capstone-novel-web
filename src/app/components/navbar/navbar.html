@@ -18,11 +18,25 @@
       <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#7B6FA0] text-sm pointer-events-none">🔍</span>
       <input [(ngModel)]="search" (input)="onSearch()" placeholder="ค้นหานิยาย, ผู้เขียน, แท็ก..." autocomplete="off" class="w-full bg-[#1D267D]/70 border border-[#5C469C]/60 rounded-full pl-9 pr-4 py-2 text-sm text-white placeholder-[#7B6FA0] outline-none focus:border-[#D4ADFC] transition-all duration-200" />
       
-      <!-- NAVBAR SEARCH DROPDOWN -->
+      <!-- NAVBAR SEARCH DROPDOWN - แก้ไขให้รูปโหลดได้ -->
       <div *ngIf="searchResults.length > 0" class="absolute top-full mt-2 left-0 right-0 bg-[#1D267D] border border-[#5C469C]/60 rounded-2xl overflow-hidden shadow-2xl shadow-black/40 z-50">
         <div *ngFor="let b of searchResults" [routerLink]="['/read', b.id]" class="flex items-center gap-3 px-4 py-3 hover:bg-[#5C469C]/30 cursor-pointer transition-colors border-b border-[#5C469C]/20 last:border-none">
-          <img *ngIf="b.cover_path" [src]="b.cover_path" class="w-9 h-9 rounded-lg object-cover" />
-          <div *ngIf="!b.cover_path" class="w-9 h-9 rounded-lg bg-[#1D267D] flex items-center justify-center text-xs text-[#9B8CC4]">no img</div>
+          
+          <!-- แก้ไขส่วนแสดงรูป cover ให้โหลดได้ -->
+          <div class="w-9 h-9 rounded-lg overflow-hidden bg-[#1D267D] flex items-center justify-center shrink-0">
+            <!-- กรณีมีรูปและเป็น URL ที่ใช้ได้ -->
+            <img *ngIf="b.cover_path && isValidCoverUrl(b.cover_path)" 
+                 [src]="getFullCoverUrl(b.cover_path)" 
+                 class="w-full h-full object-cover" 
+                 (error)="onImageError(b)" />
+            
+            <!-- กรณีไม่มีรูป หรือรูปไม่ใช่ URL -->
+            <span *ngIf="!b.cover_path || !isValidCoverUrl(b.cover_path)" 
+                  class="text-xl">
+              {{ getCoverEmoji(b.cover_path) }}
+            </span>
+          </div>
+          
           <div class="flex-1 min-w-0">
             <p class="text-sm font-semibold text-white truncate">{{b.title}}</p>
             <p class="text-xs text-[#9B8CC4]">{{b.pen_name}}</p>
@@ -67,7 +81,7 @@
               </div>
             </div>
 
-            <!-- ✅ แถวแสดงเหรียญ -->
+            <!-- แถวแสดงเหรียญ -->
             <div class="px-4 py-2 bg-gradient-to-r from-[#5C469C]/30 to-[#1D267D] border-b border-[#5C469C]/30">
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
@@ -80,14 +94,13 @@
                 </div>
               </div>
             </div>
-            <!-- ใน dropdown เมนู ใต้เหรียญ -->
+
             <div *ngIf="isAdmin" class="border-b border-[#5C469C]/30">
               <div (click)="navigateToAdmin()" class="flex items-center gap-3 px-4 py-2.5 text-sm text-[#D4ADFC] bg-[#5C469C]/20 hover:bg-[#5C469C]/40 transition-colors cursor-pointer">
                 <span>📊</span> Dashboard Admin
               </div>
             </div>
 
-            <!-- ✅ เปลี่ยน <a> เป็น <div> + (click) -->
             <div class="py-1.5">
               <div (click)="navigateTo('/writer')" class="flex items-center gap-3 px-4 py-2.5 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30 hover:text-white transition-colors cursor-pointer">
                 <span>✍️</span> เขียนนิยาย
