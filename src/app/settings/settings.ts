@@ -28,7 +28,6 @@ export class SettingsComponent implements OnInit {
   profile: any = {
     name: '',
     email: '',
-    bio: '',
     avatar_path: ''
   };
 
@@ -42,7 +41,8 @@ export class SettingsComponent implements OnInit {
 
   previewUrl: string | null = null;
   selectedFile: File | null = null;
-  avatarBase64: string | null = null;
+
+  isGoogleLogin: boolean = false;
 
   constructor(
     private userService: UserService, 
@@ -57,13 +57,24 @@ export class SettingsComponent implements OnInit {
       if (!user) return;
       
       this.currentUser = user;
+      
+      const isGoogleLoginStorage = localStorage.getItem('is_google_login') === 'true';
+      
+      this.isGoogleLogin = isGoogleLoginStorage;
+      
+      if (this.isGoogleLogin) {
+        this.security = { current: '', newPw: '', confirm: '' };
+        // ถ้าเป็น Google login ให้อยู่ที่โปรไฟล์เฉยๆ
+        this.selectedTab = 'profile';
+      }
 
       this.profile = {
         name: user.username || '',
         email: user.email || '',
-        bio: user.bio || '',
         avatar_path: user.avatar_path || ''
       };
+      
+      this.cdr.detectChanges();
     });
   }
 
@@ -77,37 +88,23 @@ export class SettingsComponent implements OnInit {
   save() {
     const formData = new FormData();
     formData.append('username', this.profile.name);
-    formData.append('bio', this.profile.bio);
-    
-    if (this.avatarBase64) {
-      formData.append('avatar_content', this.avatarBase64);
+
+    if (this.selectedFile) {
+      formData.append('avatar', this.selectedFile); // ✅ ใช้ file จริง
     }
-    
+
     this.userService.updateProfile(formData).subscribe({
       next: (res: any) => {
         this.showToastMessage('อัปเดตโปรไฟล์สำเร็จ! 🎉', 'success');
-        
-        if (res.user && this.currentUser) {
-          const timestamp = Date.now();
-          this.currentUser.avatar_path = res.user.avatar_path 
-            ? `${res.user.avatar_path}?t=${timestamp}` 
-            : null;
-          this.currentUser.username = res.user.username;
-          this.currentUser.bio = res.user.bio;
-          
-          this.profile.avatar_path = this.currentUser.avatar_path;
-          this.profile.name = this.currentUser.username;
-          this.profile.bio = this.currentUser.bio;
-        }
-        
+
         this.previewUrl = null;
-        this.avatarBase64 = null;
-        this.cdr.detectChanges();
+        this.selectedFile = null;
+
         this.userService.loadProfile();
       },
       error: (err) => {
         console.error(err);
-        this.showToastMessage('เกิดข้อผิดพลาด กรุณาลองอีกครั้ง ❌', 'error');
+        this.showToastMessage('เกิดข้อผิดพลาด ❌', 'error');
       }
     });
   }
@@ -118,6 +115,7 @@ export class SettingsComponent implements OnInit {
 
   logout() {
     localStorage.removeItem('token');
+    localStorage.removeItem('is_google_login');
     this.router.navigate(['/']);
   }
 
@@ -127,6 +125,7 @@ export class SettingsComponent implements OnInit {
 
   changePassword(event?: Event) {
     event?.preventDefault();
+    
     this.pwError = '';
     this.toast = '';
 
@@ -192,26 +191,30 @@ export class SettingsComponent implements OnInit {
 
   onFileSelected(event: any) {
     const file = event.target.files[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        this.showToastMessage('ไฟล์รูปต้องมีขนาดไม่เกิน 5MB', 'error');
-        return;
-      }
-      
-      if (!file.type.match(/image\/(jpeg|png|jpg|gif)/)) {
-        this.showToastMessage('กรุณาเลือกรูปภาพเท่านั้น (JPG, PNG, GIF)', 'error');
-        return;
-      }
-      
-      const reader = new FileReader();
-      reader.onload = () => {
-        this.previewUrl = reader.result as string;
-        this.avatarBase64 = reader.result as string;
-        this.profile.avatar_path = this.previewUrl;
-        this.cdr.detectChanges();
-        this.showToastMessage('เลือกรูปภาพเรียบร้อยแล้ว ✅', 'success');
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      this.showToastMessage('ไฟล์รูปต้องไม่เกิน 5MB', 'error');
+      return;
     }
+
+    if (!file.type.match(/image\/(jpeg|png|jpg|gif)/)) {
+      this.showToastMessage('กรุณาเลือกรูปภาพเท่านั้น', 'error');
+      return;
+    }
+
+    this.selectedFile = file;
+
+    // preview อย่างเดียว
+    const reader = new FileReader();
+    reader.onload = () => {
+      this.previewUrl = reader.result as string;
+      this.profile.avatar_path = this.previewUrl;
+      this.cdr.detectChanges();
+    };
+    reader.readAsDataURL(file);
+
+    this.showToastMessage('เลือกรูปภาพเรียบร้อยแล้ว ✅', 'success');
   }
+
 }

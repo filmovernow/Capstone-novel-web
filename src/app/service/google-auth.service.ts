@@ -28,15 +28,13 @@ export class GoogleAuthService {
   }
 
   handleGoogleLogin(response: any) {
-    // Decode JWT token ที่ได้จาก Google
     const payload = this.decodeJwtResponse(response.credential);
     
-    // ส่งข้อมูลไป Backend
     const data = {
       user: {
         email: payload.email,
         username: payload.name,
-        password: payload.sub, // ใช้ Google ID เป็น password
+        password: payload.sub,
         password_confirmation: payload.sub
       }
     };
@@ -45,19 +43,22 @@ export class GoogleAuthService {
       next: (res: any) => {
         if (res.token) {
           localStorage.setItem('token', `Bearer ${res.token}`);
+          // ✅ ตั้ง flag ว่า login ด้วย Google
+          localStorage.setItem('is_google_login', 'true');
           this.userService.loadProfile();
           this.router.navigate(['/']);
         }
       },
       error: (err: any) => {
         if (err.status === 422) {
-          // User มีอยู่แล้ว ให้ login
           this.http.post('http://localhost:3000/api/v1/user/sign-in', {
             identifier: payload.email,
             password: payload.sub
           }).subscribe({
             next: (loginRes: any) => {
               localStorage.setItem('token', `Bearer ${loginRes.token}`);
+              // ✅ ตั้ง flag ว่า login ด้วย Google
+              localStorage.setItem('is_google_login', 'true');
               this.userService.loadProfile();
               this.router.navigate(['/']);
             },
