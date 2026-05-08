@@ -1,4 +1,4 @@
-import { Component, ChangeDetectorRef, OnInit, OnDestroy } from '@angular/core';
+import { Component, ChangeDetectorRef, OnInit, OnDestroy, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink, Router, ActivatedRoute } from '@angular/router';
@@ -128,25 +128,42 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
     }
   }
 
+  // ✅ เริ่ม Auto-save ทุก 5 วินาที
   startAutoSave() {
     this.autoSaveTimer = setInterval(() => {
       if (this.hasUnsavedChanges() && !this.isSaving) {
         this.autoSave();
       }
-    }, 10000);
+    }, 5000); // เปลี่ยนเป็น 5 วินาที
   }
 
+  // ✅ ตรวจสอบว่ามีข้อมูลที่ต้องบันทึกหรือไม่ (รวมทุกอย่าง)
   hasUnsavedChanges(): boolean {
-    return !!this.novelTitle || !!this.synopsis || 
-           this.chapters.some(ch => ch.content && ch.content.trim());
+    return !!this.novelTitle ||
+           !!this.penName ||
+           !!this.synopsis ||
+           this.selectedGenres.length > 0 ||
+           this.selectedTags.length > 0 ||
+           !!this.coverBase64 ||
+           (this.selectedCoverEmoji && this.selectedCoverEmoji !== '📖') ||
+           this.chapters.some(ch => 
+             (ch.title && ch.title.trim()) ||
+             (ch.content && ch.content.trim()) ||
+             (ch.price !== undefined && ch.price > 0) ||
+             (ch.freeDate && ch.freeDate.trim())
+           ) ||
+           this.pricingModel !== 'free' ||
+           this.oneTimePrice > 0;
   }
 
+  // ✅ Auto-save หลัก
   autoSave() {
-    if (!this.novelTitle && !this.synopsis && this.chapters.length === 0) {
+    if (!this.novelTitle && !this.penName && !this.synopsis && this.chapters.length === 0) {
       return;
     }
 
-    console.log('🔄 Auto-saving... (status: writing)');
+    this.saveStatus = '💾 Auto-saving...';
+    console.log('🔄 Auto-saving... (every 5 seconds)');
     
     if (this.isEditMode && this.novelId) {
       this.updateNovel('writing', false);
@@ -244,10 +261,14 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
         this.novelId = novelRes.id;
         this.isEditMode = true;
         this.currentStatus = status;
+        this.saveStatus = '✅ Saved!';
+        setTimeout(() => this.saveStatus = '', 2000);
         this.saveChapters(this.novelId!, status, false);
       },
       error: (err) => {
         console.error('Auto-save error:', err);
+        this.saveStatus = '❌ Save failed';
+        setTimeout(() => this.saveStatus = '', 2000);
         this.isSaving = false;
       }
     });
@@ -369,6 +390,7 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
     } else {
       this.selectedGenres.push(g);
     }
+    // ✅ auto-save จะทำงานทุก 5 วิอยู่แล้ว ไม่ต้องเรียกเพิ่ม
   }
 
   addTag() {
@@ -405,7 +427,6 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
         this.selectedCoverEmoji = '';
         this.cdr.detectChanges();
         
-        // ✅ เซฟอัตโนมัติเมื่ออัปโหลดรูป (แต่ไม่ redirect)
         if (this.isEditMode && this.novelId) {
           this.updateNovel(this.currentStatus, false);
         }
@@ -425,7 +446,6 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
     this.selectedCoverEmoji = '📖';
     this.selectedCover = '📖';
     
-    // ✅ เซฟอัตโนมัติเมื่อลบรูป (แต่ไม่ redirect)
     if (this.isEditMode && this.novelId) {
       this.updateNovel(this.currentStatus, false);
     }
@@ -439,7 +459,6 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
     this.coverImageUrl = '';
     this.coverBase64 = '';
     
-    // ✅ เซฟอัตโนมัติเมื่อเลือกอีโมจิ (แต่ไม่ redirect)
     if (this.isEditMode && this.novelId) {
       this.updateNovel(this.currentStatus, false);
     }
@@ -491,9 +510,9 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
 
   saveDraft() {
     if (this.isEditMode && this.novelId) {
-      this.updateNovel('draft', true);  // ✅ redirect
+      this.updateNovel('draft', true);
     } else {
-      this.createNovel('draft', true);  // ✅ redirect
+      this.createNovel('draft', true);
     }
   }
 
@@ -504,9 +523,9 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
     }
 
     if (this.isEditMode && this.novelId) {
-      this.updateNovel('published', true);  // ✅ redirect
+      this.updateNovel('published', true);
     } else {
-      this.createNovel('published', true);  // ✅ redirect
+      this.createNovel('published', true);
     }
   }
 
@@ -576,6 +595,7 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
         title: this.novelTitle,
         description: this.synopsis,
         genres: this.selectedGenres,
+        pen_name: this.penName,
         status: finalStatus,
         is_premium: isPremium,
         price: novelPrice,
@@ -600,7 +620,6 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
         this.currentStatus = finalStatus;
         this.saveStatus = `✅ ${statusText}สำเร็จ!`;
         
-        // ✅ redirect เฉพาะเมื่อควร redirect เท่านั้น
         if (shouldRedirect) {
           setTimeout(() => {
             this.router.navigate(['/writer']);
@@ -623,11 +642,18 @@ export class CreateNovelComponent implements OnInit, OnDestroy {
     });
   }
 
+  // ✅ แก้ไข saveChapters ให้บันทึกทุกตอนที่มีข้อมูล
   saveChapters(novelId: number, novelStatus: 'draft' | 'writing' | 'published', shouldRedirect: boolean = false) {
     const token = localStorage.getItem('token');
     const headers = new HttpHeaders().set('Authorization', `Bearer ${token}`);
     
-    const chaptersToSave = this.chapters.filter(ch => ch.content && ch.content.trim());
+    // ✅ บันทึกทุกตอนที่มี title หรือ content หรือ price หรือ freeDate
+    const chaptersToSave = this.chapters.filter(ch => 
+      (ch.title && ch.title.trim()) ||
+      (ch.content && ch.content.trim()) ||
+      (ch.price !== undefined && ch.price > 0) ||
+      (ch.freeDate && ch.freeDate.trim())
+    );
     
     if (chaptersToSave.length === 0) {
       this.isSaving = false;
