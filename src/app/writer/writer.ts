@@ -277,7 +277,7 @@ export class WriterComponent implements OnInit, OnDestroy {
 
   @HostListener('window:scroll', [])
   onScroll() {
-    this.scrolled = window.scrollY > 300;
+    this.scrolled = window.scrollY > 10;
   }
 
   @HostListener('document:click', ['$event'])

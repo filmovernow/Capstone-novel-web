@@ -6,7 +6,7 @@ import { Router } from '@angular/router';
 import { AdminService, User, Novel, Withdrawal } from './admin.service';
 import { UserService } from '../service/user.service';
 import { filter } from 'rxjs/operators';
-import { HttpClient } from '@angular/common/http';  // ✅ เพิ่ม HttpClient
+import { HttpClient } from '@angular/common/http';
 
 @Component({
   selector: 'app-admin-dashboard',
@@ -43,7 +43,7 @@ export class AdminDashboardComponent implements OnInit {
     private userService: UserService,
     private router: Router,
     private cdr: ChangeDetectorRef,
-    private http: HttpClient  // ✅ เพิ่ม HttpClient
+    private http: HttpClient
   ) {}
 
   ngOnInit() {

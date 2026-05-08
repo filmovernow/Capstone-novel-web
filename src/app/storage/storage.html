@@ -1,6 +1,93 @@
 <div class="bg-[#0C134F] text-[#D4ADFC] min-h-screen font-sans">
 
-  <app-navbar (searchEvent)="onNavbarSearch($event)"></app-navbar>
+  <!-- NAVBAR ที่ย้ายมาไว้ใน storage (ไม่มี search box) -->
+  <nav [class]="'fixed top-0 w-full z-50 transition-all duration-300 border-b ' + (scrolled ? 'bg-[#0C134F]/90 backdrop-blur border-[#1D267D] shadow' : 'bg-transparent border-transparent')">
+    <div class="max-w-7xl mx-auto px-6 h-16 grid items-center" [class]="scrolled ? 'grid-cols-[auto_1fr_auto]' : 'grid-cols-[auto_auto]'">
+
+      <!-- LOGO -->
+      <div (click)="goHome()" class="flex items-center gap-2 cursor-pointer">
+        <img src="logo.png" class="h-8" alt="logo">
+        <span class="text-[#D4ADFC] font-semibold">My Novels</span>
+      </div>
+
+      <!-- NAV SEARCH (โผล่เมื่อ scroll ลง) - ลบออกเพราะไม่ใช้ -->
+      <div *ngIf="false" class="relative w-100 mx-auto">
+        <!-- ถูกปิดการแสดงผล -->
+      </div>
+
+      <!-- PROFILE -->
+      <div class="flex items-center justify-end gap-5 shrink-0 ml-auto">
+        <ng-container *ngIf="!currentUser; else loggedIn">
+          <a routerLink="/auth" class="flex items-center gap-2 text-sm text-[#D4ADFC] hover:text-white transition-colors">🔑 เข้าสู่ระบบ</a>
+        </ng-container>
+
+        <ng-template #loggedIn>
+          <div class="relative" id="profile-wrapper">
+            <button (click)="toggleProfile()" class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-full overflow-hidden">
+                <img *ngIf="currentUser?.avatar_path" [src]="currentUser.avatar_path" class="w-full h-full object-cover">
+                <span *ngIf="!currentUser?.avatar_path" class="bg-gradient-to-br from-[#5C469C] to-[#D4ADFC] w-full h-full flex items-center justify-center text-sm font-bold text-[#0C134F]">
+                  {{ currentUser?.username?.[0] || 'น' }}
+                </span>
+              </div>
+              <span class="text-sm">{{ currentUser?.username || 'นักอ่าน' }}</span>
+              <span class="text-[#7B6FA0]">▾</span>
+            </button>
+
+            <div *ngIf="profileOpen" class="absolute right-0 top-full mt-2 w-64 bg-[#1D267D] border border-[#5C469C]/50 rounded-2xl shadow-2xl shadow-black/50 overflow-hidden z-50">
+              <div class="px-4 py-3 border-b border-[#5C469C]/30 flex items-center gap-3">
+                <img *ngIf="currentUser?.avatar_path; else fallback" [src]="currentUser.avatar_path" class="w-8 h-8 rounded-full object-cover cursor-pointer" (click)="toggleProfile()" />
+                <ng-template #fallback>
+                  <div (click)="toggleProfile()" class="w-8 h-8 rounded-full bg-gradient-to-br from-[#5C469C] to-[#D4ADFC] flex items-center justify-center text-sm font-bold text-[#0C134F] cursor-pointer">{{currentUser?.username ? currentUser.username[0] : 'น'}}</div>
+                </ng-template>
+                <div>
+                  <p class="text-sm font-semibold text-white">{{ currentUser?.username || 'นักอ่านตัวยง' }}</p>
+                  <p class="text-xs text-[#7B6FA0]">{{ currentUser?.email || 'user@email.com' }}</p>
+                </div>
+              </div>
+
+              <div class="px-4 py-2 bg-gradient-to-r from-[#5C469C]/30 to-[#1D267D] border-b border-[#5C469C]/30">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <span class="text-lg">🪙</span>
+                    <span class="text-xs text-[#9B8CC4]">เหรียญของฉัน</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-lg font-bold text-[#D4ADFC]">{{ formatNumber(currentUser?.coin_balance || 0) }}</span>
+                    <button (click)="goToTopup()" class="text-xs bg-[#D4ADFC] text-[#0C134F] px-2 py-0.5 rounded-full hover:bg-[#B085E8] transition-colors">+ เติม</button>
+                  </div>
+                </div>
+              </div>
+
+              <div *ngIf="isAdmin" class="border-b border-[#5C469C]/30">
+                <div (click)="navigateToAdmin()" class="flex items-center gap-3 px-4 py-2.5 text-sm text-[#D4ADFC] bg-[#5C469C]/20 hover:bg-[#5C469C]/40 transition-colors cursor-pointer">
+                  <span>📊</span> Dashboard Admin
+                </div>
+              </div>
+
+              <div class="py-1.5">
+                <div (click)="navigateTo('/writer')" class="flex items-center gap-3 px-4 py-2.5 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30 hover:text-white transition-colors cursor-pointer">
+                  <span>✍️</span> เขียนนิยาย
+                </div>
+                <div (click)="navigateTo('/storage')" class="flex items-center gap-3 px-4 py-2.5 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30 hover:text-white transition-colors cursor-pointer">
+                  <span>📦</span> คลังของฉัน
+                </div>
+                <div (click)="navigateTo('/settings')" class="flex items-center gap-3 px-4 py-2.5 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30 hover:text-white transition-colors cursor-pointer">
+                  <span>⚙️</span> ตั้งค่าบัญชี
+                </div>
+              </div>
+              
+              <div class="border-t border-[#5C469C]/30 py-1.5">
+                <button (click)="logout()" class="w-full text-left flex items-center gap-3 px-4 py-2.5 text-sm text-[#ff9eb5] hover:bg-[#ff6f91]/10 transition-colors">
+                  <span>🚪</span> ออกจากระบบ
+                </button>
+              </div>
+            </div>
+          </div>
+        </ng-template>
+      </div>
+    </div>
+  </nav>
 
   <div class="pt-20">
     <div class="max-w-7xl mx-auto px-6 pb-16">
@@ -60,7 +147,7 @@
       </div>
 
       <!-- EMPTY STATE -->
-      <div *ngIf="!loading && filteredItems.length === 0" class="col-span-full flex flex-col items-center justify-center py-20 text-center">
+      <div *ngIf="!loading && filteredItems.length === 0" class="flex flex-col items-center justify-center py-20 text-center">
         <div class="text-6xl mb-4 opacity-40">📭</div>
         <p class="text-[#7B6FA0] text-sm">ยังไม่มีรายการในหมวดนี้</p>
         <a routerLink="/" class="mt-4 text-sm text-[#D4ADFC] hover:text-[#B085E8] underline transition-colors">ไปเลือกนิยายกัน →</a>

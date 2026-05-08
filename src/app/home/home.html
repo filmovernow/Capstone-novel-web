@@ -1,6 +1,126 @@
 <div class="bg-[#0C134F] text-[#D4ADFC] min-h-screen font-sans">
 
-  <app-navbar (searchEvent)="onNavbarSearch($event)"></app-navbar>
+  <!-- NAVBAR ที่ย้ายมาไว้ใน home -->
+  <nav [class]="'fixed top-0 w-full z-50 transition-all duration-300 border-b ' + (scrolled ? 'bg-[#0C134F]/90 backdrop-blur border-[#1D267D] shadow' : 'bg-transparent border-transparent')">
+    <div class="max-w-7xl mx-auto px-6 h-16 grid items-center gap-4" [class]="scrolled ? 'grid-cols-[auto_1fr_auto]' : 'grid-cols-[auto_auto]'">
+
+      <!-- LOGO -->
+      <div (click)="goHome()" class="flex items-center gap-2 cursor-pointer">
+        <img src="logo.png" class="h-8" alt="logo">
+        <span class="text-[#D4ADFC] font-semibold">My Novels</span>
+      </div>
+
+      <!-- NAV SEARCH (โผล่เมื่อ scroll ลง) -->
+      <div *ngIf="scrolled" class="relative w-100 mx-auto" style="animation: navSearchFadeIn .25s ease-out both">
+        <style>
+          @keyframes navSearchFadeIn {
+            from { opacity: 0; transform: translateY(-6px); }
+            to   { opacity: 1; transform: translateY(0); }
+          }
+        </style>
+        <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#7B6FA0] text-sm pointer-events-none">🔍</span>
+        <input [(ngModel)]="search" (input)="onSearch()" placeholder="ค้นหานิยาย, ผู้เขียน, แท็ก..." autocomplete="off" class="w-full bg-[#1D267D]/70 border border-[#5C469C]/60 rounded-full pl-9 pr-4 py-2 text-sm text-white placeholder-[#7B6FA0] outline-none focus:border-[#D4ADFC] transition-all duration-200" />
+        
+        <!-- NAVBAR SEARCH DROPDOWN -->
+        <div *ngIf="searchResults.length > 0" class="absolute top-full mt-2 left-0 right-0 bg-[#1D267D] border border-[#5C469C]/60 rounded-2xl overflow-hidden shadow-2xl shadow-black/40 z-50">
+          <div *ngFor="let b of searchResults" [routerLink]="['/read', b.id]" class="flex items-center gap-3 px-4 py-3 hover:bg-[#5C469C]/30 cursor-pointer transition-colors border-b border-[#5C469C]/20 last:border-none">
+            
+            <div class="w-9 h-9 rounded-lg overflow-hidden bg-[#1D267D] flex items-center justify-center shrink-0">
+              <img *ngIf="b.cover_path && isValidCoverUrl(b.cover_path)" 
+                   [src]="getFullCoverUrl(b.cover_path)" 
+                   class="w-full h-full object-cover" 
+                   (error)="onImageError(b)" />
+              <span *ngIf="!b.cover_path || !isValidCoverUrl(b.cover_path)" class="text-xl">
+                {{ getCoverEmoji(b.cover_path) }}
+              </span>
+            </div>
+            
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-semibold text-white truncate">{{b.title}}</p>
+              <p class="text-xs text-[#9B8CC4]">{{b.pen_name}}</p>
+            </div>
+            <div class="flex gap-1 flex-wrap">
+              <span *ngFor="let g of b.genres | slice:0:3" class="text-[10px] bg-[#5C469C]/50 text-[#D4ADFC] px-2 py-0.5 rounded-full">{{g.name}}</span>
+              <span *ngIf="b.genres && b.genres.length > 3" class="text-[10px] text-[#7B6FA0] px-1">+{{b.genres.length - 3}}</span>
+            </div>
+          </div>
+        </div>
+        <div *ngIf="search && searchResults.length === 0 && searchDone" class="absolute top-full mt-2 left-0 right-0 bg-[#1D267D] border border-[#5C469C]/60 rounded-xl px-5 py-4 text-[#9B8CC4] text-sm z-50">ไม่พบนิยายที่ตรงกับ "{{search}}" 😢</div>
+      </div>
+
+      <!-- PROFILE -->
+      <div class="flex items-center justify-end gap-5 shrink-0">
+        <ng-container *ngIf="!currentUser; else loggedIn">
+          <a routerLink="/auth" class="flex items-center gap-2 text-sm text-[#D4ADFC] hover:text-white transition-colors">🔑 เข้าสู่ระบบ</a>
+        </ng-container>
+
+        <ng-template #loggedIn>
+          <div class="relative" id="profile-wrapper">
+            <button (click)="toggleProfile()" class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-full overflow-hidden">
+                <img *ngIf="currentUser?.avatar_path" [src]="currentUser.avatar_path" class="w-full h-full object-cover">
+                <span *ngIf="!currentUser?.avatar_path" class="bg-gradient-to-br from-[#5C469C] to-[#D4ADFC] w-full h-full flex items-center justify-center text-sm font-bold text-[#0C134F]">
+                  {{ currentUser?.username?.[0] || 'น' }}
+                </span>
+              </div>
+              <span class="text-sm">{{ currentUser?.username || 'นักอ่าน' }}</span>
+              <span class="text-[#7B6FA0]">▾</span>
+            </button>
+
+            <div *ngIf="profileOpen" class="absolute right-0 top-full mt-2 w-64 bg-[#1D267D] border border-[#5C469C]/50 rounded-2xl shadow-2xl shadow-black/50 overflow-hidden z-50">
+              <div class="px-4 py-3 border-b border-[#5C469C]/30 flex items-center gap-3">
+                <img *ngIf="currentUser?.avatar_path; else fallback" [src]="currentUser.avatar_path" class="w-8 h-8 rounded-full object-cover cursor-pointer" (click)="toggleProfile()" />
+                <ng-template #fallback>
+                  <div (click)="toggleProfile()" class="w-8 h-8 rounded-full bg-gradient-to-br from-[#5C469C] to-[#D4ADFC] flex items-center justify-center text-sm font-bold text-[#0C134F] cursor-pointer">{{currentUser?.username ? currentUser.username[0] : 'น'}}</div>
+                </ng-template>
+                <div>
+                  <p class="text-sm font-semibold text-white">{{ currentUser?.username || 'นักอ่านตัวยง' }}</p>
+                  <p class="text-xs text-[#7B6FA0]">{{ currentUser?.email || 'user@email.com' }}</p>
+                </div>
+              </div>
+
+              <div class="px-4 py-2 bg-gradient-to-r from-[#5C469C]/30 to-[#1D267D] border-b border-[#5C469C]/30">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <span class="text-lg">🪙</span>
+                    <span class="text-xs text-[#9B8CC4]">เหรียญของฉัน</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-lg font-bold text-[#D4ADFC]">{{ formatNumber(currentUser?.coin_balance || 0) }}</span>
+                    <button (click)="goToTopup()" class="text-xs bg-[#D4ADFC] text-[#0C134F] px-2 py-0.5 rounded-full hover:bg-[#B085E8] transition-colors">+ เติม</button>
+                  </div>
+                </div>
+              </div>
+
+              <div *ngIf="isAdmin" class="border-b border-[#5C469C]/30">
+                <div (click)="navigateToAdmin()" class="flex items-center gap-3 px-4 py-2.5 text-sm text-[#D4ADFC] bg-[#5C469C]/20 hover:bg-[#5C469C]/40 transition-colors cursor-pointer">
+                  <span>📊</span> Dashboard Admin
+                </div>
+              </div>
+
+              <div class="py-1.5">
+                <div (click)="navigateTo('/writer')" class="flex items-center gap-3 px-4 py-2.5 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30 hover:text-white transition-colors cursor-pointer">
+                  <span>✍️</span> เขียนนิยาย
+                </div>
+                <div (click)="navigateTo('/storage')" class="flex items-center gap-3 px-4 py-2.5 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30 hover:text-white transition-colors cursor-pointer">
+                  <span>📦</span> คลังของฉัน
+                </div>
+                <div (click)="navigateTo('/settings')" class="flex items-center gap-3 px-4 py-2.5 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30 hover:text-white transition-colors cursor-pointer">
+                  <span>⚙️</span> ตั้งค่าบัญชี
+                </div>
+              </div>
+              
+              <div class="border-t border-[#5C469C]/30 py-1.5">
+                <button (click)="logout()" class="w-full text-left flex items-center gap-3 px-4 py-2.5 text-sm text-[#ff9eb5] hover:bg-[#ff6f91]/10 transition-colors">
+                  <span>🚪</span> ออกจากระบบ
+                </button>
+              </div>
+            </div>
+          </div>
+        </ng-template>
+      </div>
+    </div>
+  </nav>
 
   <!-- HERO -->
   <header class="bg-gradient-to-b from-[#1D267D]/60 to-[#0C134F] pt-28 pb-16 px-6 text-center">
@@ -8,14 +128,14 @@
     <h1 class="text-4xl md:text-5xl text-white font-semibold mb-3 leading-tight">อ่านนิยายที่คุณ<span class="text-[#D4ADFC]">หลงรัก</span></h1>
     <p class="text-[#9B8CC4] text-base mb-10">ค้นพบโลกใหม่จากนักเขียนกว่า 10,000 คน · อัปเดตทุกวัน</p>
 
-    <!-- SEARCH -->
+    <!-- SEARCH HERO (อันใหญ่) -->
     <div class="max-w-2xl mx-auto relative">
       <span class="absolute left-5 top-1/2 -translate-y-1/2 text-[#9B8CC4] text-lg pointer-events-none">🔍</span>
-      <input [(ngModel)]="search" (input)="onSearch()" (keyup)="onSearch()" placeholder="ค้นหาชื่อนิยาย, ผู้เขียน, หรือ tag…" class="w-full bg-[#1D267D]/70 border-2 border-[#5C469C] rounded-full pl-14 pr-36 py-4 text-white placeholder-[#7B6FA0] text-base outline-none transition-all duration-200 focus:border-[#D4ADFC]" />
+      <input [(ngModel)]="search" (input)="onSearch()" placeholder="ค้นหาชื่อนิยาย, ผู้เขียน, หรือ tag…" class="w-full bg-[#1D267D]/70 border-2 border-[#5C469C] rounded-full pl-14 pr-36 py-4 text-white placeholder-[#7B6FA0] text-base outline-none transition-all duration-200 focus:border-[#D4ADFC]" />
       <button class="absolute right-2 top-1/2 -translate-y-1/2 bg-[#D4ADFC] text-[#0C134F] font-bold text-sm px-5 py-2.5 rounded-full hover:bg-[#B085E8] transition-colors">ค้นหา</button>
     </div>
 
-    <!-- SEARCH RESULTS DROPDOWN -->
+    <!-- SEARCH RESULTS DROPDOWN (อันเดียวกัน) -->
     <div *ngIf="searchResults.length > 0" class="max-w-2xl mx-auto mt-2 text-left bg-[#1D267D] border border-[#5C469C]/60 rounded-2xl overflow-hidden shadow-xl z-40 relative">
       <div *ngFor="let b of searchResults" [routerLink]="['/read', b.id]" class="flex items-center gap-3 px-4 py-3 hover:bg-[#5C469C]/30 cursor-pointer transition-colors border-b border-[#5C469C]/20 last:border-none">
         
@@ -55,7 +175,6 @@
       <section *ngIf="featuredNovel" class="mb-10">
         <div class="bg-gradient-to-r from-[#1D267D] to-[#5C469C] rounded-2xl p-6 md:p-8 flex flex-col md:flex-row gap-6 items-start border border-[#5C469C]/50">
           
-          <!-- ✅ ปก featured novel (รองรับทั้งรูปและอีโมจิ) -->
           <div class="shrink-0">
             <div *ngIf="featuredNovel.cover_path && (featuredNovel.cover_path.includes('http') || featuredNovel.cover_path.includes('/'))" 
                 class="w-24 h-32 md:w-32 md:h-40 rounded-lg overflow-hidden shadow-lg">
@@ -76,7 +195,6 @@
             </p>
             <p class="text-[#C8BEE8] text-sm leading-relaxed mb-4 line-clamp-2 break-word">{{ featuredNovel.description || 'ยังไม่มีคำอธิบาย' }}</p>
             
-            <!-- ✅ แก้ไขตรงนี้: แสดง genres ไม่เกิน 3 อัน -->
             <div class="flex flex-wrap gap-2 mb-5">
               <ng-container *ngIf="featuredNovel.genres && featuredNovel.genres.length > 0">
                 <span *ngFor="let genre of (featuredNovel.genres | slice:0:3)" 
@@ -131,14 +249,11 @@
       <div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3">
         <div *ngFor="let book of displayBooks" [routerLink]="['/read', book.id]" class="bg-[#1D267D] rounded-2xl overflow-hidden border border-[#5C469C]/30 hover:-translate-y-2 hover:shadow-xl hover:shadow-[#000]/40 hover:border-[#D4ADFC]/50 transition-all duration-300 cursor-pointer group flex flex-col">
           
-          <!-- ✅ ปกใน grid book (รองรับทั้งรูปและอีโมจิ) -->
           <div class="relative overflow-hidden shrink-0 h-48">
-            <!-- กรณีเป็นรูป URL -->
             <img *ngIf="book.cover_path && (book.cover_path.includes('http') || book.cover_path.includes('/'))" 
                 [src]="book.cover_path" 
                 class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
             
-            <!-- กรณีเป็นอีโมจิ -->
             <div *ngIf="!book.cover_path || (book.cover_path.length <= 5 && !book.cover_path.includes('http') && !book.cover_path.includes('/'))" 
                 class="w-full h-full bg-[#0C134F] flex items-center justify-center text-7xl group-hover:scale-110 transition-transform duration-500">
               {{ (book.cover_path && book.cover_path.length <= 5) ? book.cover_path : '📖' }}
@@ -157,7 +272,6 @@
             <p class="font-semibold text-white text-sm mb-1 line-clamp-2 break-word min-h-[2.5rem]">{{book.title}}</p>
             <p class="text-xs text-[#9B8CC4] mb-3 line-clamp-1 break-word">{{book.pen_name || 'ไม่ระบุชื่อ'}}</p>
             
-            <!-- ✅ แก้ไข: แสดง genres 3 อัน + แสดง +N ถ้ามีเกิน -->
             <div class="flex flex-wrap gap-1 mt-auto">
               <ng-container *ngIf="book.genres && book.genres.length > 0">
                 <span *ngFor="let g of book.genres | slice:0:3" class="text-[10px] bg-[#5C469C]/50 text-[#D4ADFC] px-2 py-0.5 rounded-full whitespace-nowrap">{{g.name}}</span>
@@ -233,7 +347,6 @@
             (click)="closeAllBooksModal()"
             class="bg-[#0C134F]/60 rounded-xl overflow-hidden border border-[#5C469C]/30 hover:border-[#D4ADFC]/50 hover:-translate-y-1 transition-all duration-200 cursor-pointer group flex flex-col">
           
-          <!-- ✅ ปกใน modal (รองรับทั้งรูปและอีโมจิ) -->
           <div class="relative shrink-0 h-36">
             <img *ngIf="book.cover_path && (book.cover_path.includes('http') || book.cover_path.includes('/'))" 
                  [src]="book.cover_path" 

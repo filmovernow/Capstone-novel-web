@@ -1,10 +1,10 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { RouterLink, Router } from '@angular/router';
 import { UserService } from '../service/user.service';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
-import { NavbarComponent } from '../components/navbar/navbar';
 
 interface StorageItem {
   novelId: number;
@@ -17,11 +17,10 @@ interface StorageItem {
   progress?: number;
 }
 
-
 @Component({
   selector: 'app-storage',
   standalone: true,
-  imports: [CommonModule, RouterLink, NavbarComponent],
+  imports: [CommonModule, FormsModule, RouterLink],
   templateUrl: './storage.html',
 })
 export class StorageComponent implements OnInit {
@@ -31,7 +30,6 @@ export class StorageComponent implements OnInit {
   
   recentReads: StorageItem[] = [];
   followedNovels: StorageItem[] = [];
-  // ❌ ลบ likedChapters: LikedChapterItem[] = [];
 
   tabs = [
     { key: 'recent', icon: '🕐', label: 'อ่านล่าสุด', count: 0 },
@@ -39,6 +37,10 @@ export class StorageComponent implements OnInit {
   ];
 
   currentUser: any = null;
+
+  // Navbar properties (เอา search ออก)
+  profileOpen = false;
+  scrolled = false;
 
   private API_URL = 'http://localhost:3000/api/v1';
   private isLoadingData = false;
@@ -55,6 +57,12 @@ export class StorageComponent implements OnInit {
     if (typeof genre === 'string') return genre;
     if (genre.name) return genre.name;
     return 'อื่นๆ';
+  }
+
+  formatNumber(value: number): string {
+    if (value >= 1000000) return (value / 1000000).toFixed(1) + 'M';
+    if (value >= 1000) return (value / 1000).toFixed(1) + 'K';
+    return value.toString();
   }
 
   ngOnInit() {
@@ -165,8 +173,6 @@ export class StorageComponent implements OnInit {
     this.cdr.detectChanges();
   }
   
-  
-
   updateCounts() {
     this.tabs = [
       { key: 'recent', icon: '🕐', label: 'อ่านล่าสุด', count: this.recentReads.length },
@@ -182,18 +188,53 @@ export class StorageComponent implements OnInit {
     }
   }
 
-
+  // ========== NAVBAR METHODS ==========
   goHome() {
     this.router.navigate(['/']);
+  }
+
+  goToTopup() {
+    this.router.navigate(['/topup']);
+  }
+
+  toggleProfile() {
+    this.profileOpen = !this.profileOpen;
+  }
+
+  navigateTo(path: string) {
+    this.profileOpen = false;
+    this.router.navigate([path]);
+  }
+
+  navigateToAdmin() {
+    this.profileOpen = false;
+    this.router.navigate(['/admin/dashboard']);
+  }
+
+  get isAdmin(): boolean {
+    return this.currentUser?.role === 'admin' || this.currentUser?.username === 'admin';
+  }
+
+  logout() {
+    this.userService.logout();
+    this.router.navigate(['/auth']);
   }
 
   goToReader(novelId: number) {
     this.router.navigate(['/read', novelId]);
   }
-  
-  onNavbarSearch(searchTerm: string) {
-    if (searchTerm) {
-      this.router.navigate(['/'], { queryParams: { search: searchTerm } });
+
+  // ========== HOST LISTENERS ==========
+  @HostListener('window:scroll', [])
+  onScroll() {
+    this.scrolled = window.scrollY > 5;
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocClick(e: MouseEvent) {
+    const target = e.target as HTMLElement;
+    if (!target.closest('#profile-wrapper')) {
+      this.profileOpen = false;
     }
   }
 }

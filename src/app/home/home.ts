@@ -1,4 +1,3 @@
-// home.ts
 import { Component, HostListener, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -6,7 +5,6 @@ import { RouterLink, Router } from '@angular/router';
 import { UserService } from '../service/user.service'; 
 import { ChangeDetectorRef } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { NavbarComponent } from '../components/navbar/navbar';
 
 interface Novel {
   id: number;
@@ -26,37 +24,44 @@ interface Novel {
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, NavbarComponent],
+  imports: [CommonModule, FormsModule, RouterLink],
   templateUrl: './home.html',
 })
 export class Home implements OnInit {
 
   currentUser: any = null;
 
+  // Search
   search = '';
-  profileOpen = false;
-  scrolled = false;
   searchDone = false;
   searchResults: Novel[] = [];
 
+  // Navbar states
+  profileOpen = false;
+  scrolled = false;
+
+  // Category
   categories = ['แนะนำ', 'อัปเดตล่าสุด', 'กำลังฮิต'];
   selectedCat = 'แนะนำ';
   showAllBooks = false;
 
-  // Modal properties
+  // Modal
   showAllBooksModal = false;
   modalSearch = '';
   modalBooks: Novel[] = [];
 
+  // Filters
   selectedGenre = '';
   selectedTag = '';
 
   allGenres: string[] = [];
   allTags: string[] = ['แฟนตาซี', 'วายุ', 'โรแมนติก', 'แอ็กชัน', 'ลึกลับ', 'ซึ้ง', 'GL', 'ไซไฟ', 'ตลก', 'สยองขวัญ'];
 
+  // Data
   books: Novel[] = [];
   featuredNovel: Novel | null = null;
   apiUrl = 'http://localhost:3000/api/v1';
+  baseUrl = 'http://localhost:3000';
 
   constructor(
     private userService: UserService,
@@ -137,22 +142,91 @@ export class Home implements OnInit {
     return value.toString();
   }
 
-  // ✅ ตัดข้อความ
-  truncateTextByLines(text: string, maxLines: number = 3): string {
-    if (!text) return 'ไม่มีคำอธิบาย';
-    
-    // 估算: 1 บรรทัด ~ 50-60 ตัวอักษร (ขึ้นอยู่กับความกว้าง)
-    const estimatedCharsPerLine = 55;
-    const maxChars = maxLines * estimatedCharsPerLine;
-    
-    if (text.length <= maxChars) return text;
-    
-    // ตัดที่คำเต็มๆ
-    const truncated = text.substring(0, maxChars);
-    const lastSpace = truncated.lastIndexOf(' ');
-    return (lastSpace > 0 ? truncated.substring(0, lastSpace) : truncated) + '...';
+  // ========== NAVBAR METHODS ==========
+  isValidCoverUrl(coverPath: string | null): boolean {
+    if (!coverPath) return false;
+    return coverPath.startsWith('http') || 
+           coverPath.includes('.jpg') || 
+           coverPath.includes('.png') || 
+           coverPath.includes('.jpeg') || 
+           coverPath.includes('.gif') ||
+           coverPath.includes('.webp') ||
+           coverPath.startsWith('/');
   }
 
+  getFullCoverUrl(coverPath: string | null): string {
+    if (!coverPath) return '';
+    if (coverPath.startsWith('http://') || coverPath.startsWith('https://')) {
+      return coverPath;
+    }
+    if (coverPath.startsWith('/')) {
+      return `${this.baseUrl}${coverPath}`;
+    }
+    return `${this.baseUrl}/uploads/${coverPath}`;
+  }
+
+  onImageError(book: Novel) {
+    book.cover_path = null;
+    this.cdr.detectChanges();
+  }
+
+  getCoverEmoji(coverPath: string | null): string {
+    if (!coverPath) return '📖';
+    const emojiRegex = /[\u{1F300}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/u;
+    if (emojiRegex.test(coverPath) && coverPath.length <= 4) {
+      return coverPath;
+    }
+    if (coverPath.length <= 3) {
+      return coverPath;
+    }
+    return '📖';
+  }
+
+  navigateToAdmin() {
+    this.profileOpen = false;
+    this.router.navigate(['/admin/dashboard']);
+  }
+
+  get isAdmin(): boolean {
+    return this.currentUser?.role === 'admin' || this.currentUser?.username === 'admin';
+  }
+
+  navigateTo(path: string) {
+    this.profileOpen = false;
+    this.router.navigate([path]);
+  }
+
+  goToTopup() {
+    this.router.navigate(['/topup']);
+  }
+
+  toggleProfile() {
+    this.profileOpen = !this.profileOpen;
+  }
+
+  goHome() {
+    this.router.navigate(['/']);
+  }
+
+  // ========== SEARCH METHODS ==========
+  onSearch() {
+    const q = this.search.trim().toLowerCase();
+    
+    if (!q) {
+      this.searchResults = [];
+      this.searchDone = false;
+      return;
+    }
+    
+    this.searchResults = this.books.filter(b =>
+      b.title.toLowerCase().includes(q) ||
+      (b.pen_name || '').toLowerCase().includes(q)
+    ).slice(0, 5);
+    
+    this.searchDone = true;
+  }
+
+  // ========== FILTER METHODS ==========
   get displayBooks() {
     if (this.showAllBooks) {
       return this.filteredBooks;
@@ -160,55 +234,9 @@ export class Home implements OnInit {
     return this.filteredBooks.slice(0, 12);
   }
 
-  // Modal methods
-  get modalFilteredBooks() {
-    if (!this.modalSearch.trim()) {
-      return this.modalBooks;
-    }
-    const q = this.modalSearch.trim().toLowerCase();
-    return this.modalBooks.filter(b =>
-      b.title.toLowerCase().includes(q) ||
-      (b.pen_name || '').toLowerCase().includes(q)
-    );
-  }
-
-  openAllBooksModal() {
-    console.log('Opening modal...');
-    this.modalBooks = [...this.filteredBooks];
-    console.log('Modal books count:', this.modalBooks.length);
-    this.modalSearch = '';
-    this.showAllBooksModal = true;
-    document.body.style.overflow = 'hidden';
-  }
-
-  closeAllBooksModal() {
-    this.showAllBooksModal = false;
-    this.modalSearch = '';
-    document.body.style.overflow = '';
-  }
-
-  onModalSearch() {
-    // auto filter via getter
-  }
-
-  onNavbarSearch(searchTerm: string) {
-    this.search = searchTerm;
-    this.onSearch();
-  }
-
-  goToWriter() {
-    this.router.navigate(['/writer']);
-  }
-  
-  logout() {
-    this.userService.logout();
-    this.router.navigate(['/auth']);
-  }
-
   get filteredBooks() {
     let result = [...this.books];
 
-    // กรองตามแนว
     if (this.selectedGenre) {
       result = result.filter(book => 
         book.genres?.some((g: any) => 
@@ -225,7 +253,6 @@ export class Home implements OnInit {
       );
     }
     
-    // เรียงลำดับตามหมวดหมู่ที่เลือก
     switch(this.selectedCat) {
       case 'แนะนำ':
         result = [...result].sort((a, b) => b.id - a.id);
@@ -248,14 +275,6 @@ export class Home implements OnInit {
     return result;
   }
 
-  goHome() {
-    this.router.navigate(['/']);
-  }
-  
-  toggleProfile() {
-    this.profileOpen = !this.profileOpen;
-  }
-
   setCategory(cat: string) {
     this.selectedCat = cat;
     this.selectedGenre = '';
@@ -266,27 +285,48 @@ export class Home implements OnInit {
   filterByGenre(genre: string) {
     this.selectedGenre = this.selectedGenre === genre ? '' : genre;
     this.showAllBooks = false;
-    console.log('Selected genre:', this.selectedGenre);
   }
 
   filterByTag(tag: string) {
     this.selectedTag = this.selectedTag === tag ? '' : tag;
     this.showAllBooks = false;
-    console.log('Selected tag:', this.selectedTag);
   }
 
-  onSearch() {
-    const q = this.search.trim().toLowerCase();
-    if (!q) {
-      this.searchResults = [];
-      this.searchDone = false;
-      return;
+  // ========== MODAL METHODS ==========
+  get modalFilteredBooks() {
+    if (!this.modalSearch.trim()) {
+      return this.modalBooks;
     }
-    this.searchResults = this.books.filter(b =>
+    const q = this.modalSearch.trim().toLowerCase();
+    return this.modalBooks.filter(b =>
       b.title.toLowerCase().includes(q) ||
       (b.pen_name || '').toLowerCase().includes(q)
-    ).slice(0, 5);
-    this.searchDone = true;
+    );
+  }
+
+  openAllBooksModal() {
+    this.modalBooks = [...this.filteredBooks];
+    this.modalSearch = '';
+    this.showAllBooksModal = true;
+    document.body.style.overflow = 'hidden';
+  }
+
+  closeAllBooksModal() {
+    this.showAllBooksModal = false;
+    this.modalSearch = '';
+    document.body.style.overflow = '';
+  }
+
+  onModalSearch() {}
+
+  // ========== OTHER ==========
+  goToWriter() {
+    this.router.navigate(['/writer']);
+  }
+  
+  logout() {
+    this.userService.logout();
+    this.router.navigate(['/auth']);
   }
 
   @HostListener('window:scroll', [])

@@ -11,7 +11,7 @@ export const appConfig: ApplicationConfig = {
     importProvidersFrom(FormsModule),
     provideHttpClient(),
     {
-      provide: 'SocialAuthServiceConfig',  // ← ไม่ใส่ quote
+      provide: 'SocialAuthServiceConfig',
       useValue: {
         autoLogin: false,
         providers: [

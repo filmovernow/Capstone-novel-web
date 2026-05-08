@@ -8,7 +8,7 @@ import { NovelReaderComponent } from './read-novel/novel-reader';
 import { StorageComponent } from './storage/storage';
 import { TopupComponent } from './topup/topup';
 import { AdminDashboardComponent } from './admin/admin-dashboard';
-import { AdminGuard } from './admin.guard';  // ✅ เพิ่ม import
+import { AdminGuard } from './admin.guard';
 export const routes: Routes = [
   { path: '', component: Home },
   { path: 'auth', component: AuthComponent },
