@@ -2,6 +2,8 @@
 import { Injectable } from '@angular/core';
 import { Router } from '@angular/router';
 import { UserService } from './service/user.service';
+import { first, map } from 'rxjs/operators';
+import { Observable } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
@@ -12,16 +14,35 @@ export class AdminGuard {
     private router: Router
   ) {}
 
-  canActivate(): boolean {
-    const user = this.userService.getCurrentUser();
+  canActivate(): Observable<boolean> | Promise<boolean> | boolean {
+    const token = localStorage.getItem('token');
     
-    // ✅ ตรวจสอบ role หรือ username
-    if (user && (user.role === 'admin' || user.username === 'admin')) {
-      return true;
+    if (!token) {
+      this.router.navigate(['/']);
+      return false;
     }
+
+    const currentUser = this.userService.getCurrentUser();
     
-    // ✅ ถ้าไม่มี token หรือไม่ใช่ admin ให้กลับหน้า home
-    this.router.navigate(['/']);
-    return false;
+    if (currentUser) {
+      // ✅ ใช้ optional chaining และ type assertion
+      if ((currentUser as any).role === 'admin' || (currentUser as any).username === 'admin') {
+        return true;
+      }
+      this.router.navigate(['/']);
+      return false;
+    }
+
+    return this.userService.currentUser$.pipe(
+      first(user => user !== null),
+      map(user => {
+        // ✅ ใช้ optional chaining
+        if (user && ((user as any).role === 'admin' || (user as any).username === 'admin')) {
+          return true;
+        }
+        this.router.navigate(['/']);
+        return false;
+      })
+    );
   }
 }

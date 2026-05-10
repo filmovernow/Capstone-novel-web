@@ -70,7 +70,6 @@ export class AdminService {
     });
   }
 
-  // ======================= USERS =======================
   getUsers(): Observable<UsersResponse> {
     return this.http.get<UsersResponse>(`${this.apiUrl}/users`, { headers: this.getHeaders() });
   }
@@ -83,7 +82,6 @@ export class AdminService {
     return this.http.delete(`${this.apiUrl}/users/${userId}`, { headers: this.getHeaders() });
   }
 
-  // ======================= NOVELS =======================
   getNovels(status?: string): Observable<NovelsResponse> {
     let url = `${this.apiUrl}/novels`;
     if (status) url += `?status=${status}`;
@@ -98,7 +96,6 @@ export class AdminService {
     return this.http.delete(`${this.apiUrl}/novels/${novelId}`, { headers: this.getHeaders() });
   }
 
-  // ======================= WITHDRAWALS =======================
   getWithdrawals(status?: string): Observable<WithdrawalsResponse> {
     let url = `${this.apiUrl}/withdrawals`;
     if (status) url += `?status=${status}`;

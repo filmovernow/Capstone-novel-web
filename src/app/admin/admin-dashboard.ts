@@ -3,7 +3,7 @@ import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { AdminService, User, Novel, Withdrawal } from './admin.service';
+import { AdminService, User, Novel } from './admin.service';
 import { UserService } from '../service/user.service';
 import { filter } from 'rxjs/operators';
 import { HttpClient } from '@angular/common/http';
@@ -23,20 +23,29 @@ export class AdminDashboardComponent implements OnInit {
   
   // Novels
   novels: Novel[] = [];
+  totalNovels = 0;
   loadingNovels = false;
-  
-  // Withdrawals
-  withdrawals: Withdrawal[] = [];
-  loadingWithdrawals = false;
   
   // Current User
   currentUser: any = null;
   isAdmin = false;
   
   // Tab
-  activeTab: 'users' | 'novels' | 'withdrawals' = 'users';
+  activeTab: 'users' | 'novels' = 'users';
   
-  apiUrl = 'http://localhost:3000/api/v1';  // ✅ ใช้ apiUrl แบบเดียวกับ home
+  // Search
+  searchKeyword = '';
+  
+  // ✅ ลบ property deletingUserId ออก
+
+  // ลำดับการเรียง
+  sortOrder: 'asc' | 'desc' = 'desc';
+  
+  // Pagination
+  currentPage = 1;
+  itemsPerPage = 20;
+  
+  apiUrl = 'http://localhost:3000/api/v1';
 
   constructor(
     private adminService: AdminService,
@@ -49,20 +58,141 @@ export class AdminDashboardComponent implements OnInit {
   ngOnInit() {
     console.log('🔵 AdminDashboardComponent ทำงานแล้ว!');
     
+    this.userService.loadProfile();
+    
     this.userService.currentUser$.pipe(
       filter(user => user !== null)
     ).subscribe(user => {
       console.log('🔵 user in component:', user);
       this.currentUser = user;
-      this.isAdmin = user?.role === 'admin' || user?.username === 'admin';
       
-      if (!this.isAdmin) {
-        console.log('⚠️ Guard พลาด! redirect อีกที');
-        this.router.navigate(['/']);
+      if (user.role !== 'admin' && user.username !== 'admin') {
+        console.log('⚠️ ไม่ใช่ admin! จะไม่แสดงข้อมูล');
+        this.isAdmin = false;
         return;
       }
       
+      this.isAdmin = true;
+      
+      // โหลดข้อมูลทันทีทั้งสอง tab
       this.loadUsers();
+      this.loadNovels();
+    });
+  }
+
+  // ======================= PAGINATION =======================
+  
+  get totalPages(): number {
+    const total = this.activeTab === 'users' ? this.filteredUsers.length : this.filteredNovels.length;
+    return Math.ceil(total / this.itemsPerPage);
+  }
+
+  get paginatedUsers(): User[] {
+    const start = (this.currentPage - 1) * this.itemsPerPage;
+    const end = start + this.itemsPerPage;
+    return this.filteredUsers.slice(start, end);
+  }
+
+  get paginatedNovels(): Novel[] {
+    const start = (this.currentPage - 1) * this.itemsPerPage;
+    const end = start + this.itemsPerPage;
+    return this.filteredNovels.slice(start, end);
+  }
+
+  goToPage(page: number) {
+    if (page >= 1 && page <= this.totalPages) {
+      this.currentPage = page;
+      this.cdr.detectChanges();
+    }
+  }
+
+  prevPage() {
+    if (this.currentPage > 1) {
+      this.currentPage--;
+      this.cdr.detectChanges();
+    }
+  }
+
+  nextPage() {
+    if (this.currentPage < this.totalPages) {
+      this.currentPage++;
+      this.cdr.detectChanges();
+    }
+  }
+
+  getPages(): number[] {
+    const pages: number[] = [];
+    const total = this.totalPages;
+    const current = this.currentPage;
+    
+    if (total <= 7) {
+      for (let i = 1; i <= total; i++) pages.push(i);
+    } else {
+      if (current <= 3) {
+        for (let i = 1; i <= 5; i++) pages.push(i);
+        pages.push(-1);
+        pages.push(total);
+      } else if (current >= total - 2) {
+        pages.push(1);
+        pages.push(-1);
+        for (let i = total - 4; i <= total; i++) pages.push(i);
+      } else {
+        pages.push(1);
+        pages.push(-1);
+        for (let i = current - 1; i <= current + 1; i++) pages.push(i);
+        pages.push(-1);
+        pages.push(total);
+      }
+    }
+    return pages;
+  }
+
+  // ======================= SEARCH & SORT =======================
+  
+  toggleSortOrder() {
+    this.sortOrder = this.sortOrder === 'desc' ? 'asc' : 'desc';
+    this.currentPage = 1;
+    this.cdr.detectChanges();
+  }
+
+  onSearch() {
+    this.currentPage = 1;
+    this.cdr.detectChanges();
+  }
+
+  clearSearch() {
+    this.searchKeyword = '';
+    this.currentPage = 1;
+  }
+
+  get filteredUsers(): User[] {
+    if (!this.searchKeyword.trim()) {
+      return this.users;
+    }
+    const keyword = this.searchKeyword.toLowerCase();
+    return this.users.filter(user => 
+      user.username.toLowerCase().includes(keyword) ||
+      user.email.toLowerCase().includes(keyword)
+    );
+  }
+
+  get filteredNovels(): Novel[] {
+    let result = this.novels;
+    
+    if (this.searchKeyword.trim()) {
+      const keyword = this.searchKeyword.toLowerCase();
+      result = this.novels.filter(novel => 
+        novel.title.toLowerCase().includes(keyword) ||
+        (novel.pen_name && novel.pen_name.toLowerCase().includes(keyword))
+      );
+    }
+    
+    return result.sort((a, b) => {
+      if (this.sortOrder === 'desc') {
+        return b.id - a.id;
+      } else {
+        return a.id - b.id;
+      }
     });
   }
 
@@ -78,6 +208,7 @@ export class AdminDashboardComponent implements OnInit {
         this.users = res.users || [];
         this.totalUsers = res.total || 0;
         this.loading = false;
+        this.currentPage = 1;
         this.cdr.detectChanges();
       },
       error: (err) => {
@@ -117,42 +248,21 @@ export class AdminDashboardComponent implements OnInit {
     }
   }
 
-  deleteUser(user: User) {
-    if (user.id === this.currentUser?.id) {
-      alert('คุณไม่สามารถลบตัวเองได้');
-      return;
-    }
-    
-    if (confirm(`⚠️ ลบผู้ใช้ "${user.username}" ถาวร? การลบจะลบนิยายและข้อมูลทั้งหมดด้วย!`)) {
-      this.adminService.deleteUser(user.id).subscribe({
-        next: () => {
-          this.users = this.users.filter(u => u.id !== user.id);
-          this.totalUsers--;
-          this.cdr.detectChanges();
-          alert('ลบผู้ใช้สำเร็จ');
-        },
-        error: (err) => {
-          console.error('🔴 ลบล้มเหลว:', err);
-          alert(`ลบผู้ใช้ล้มเหลว: ${err.error?.error || err.message}`);
-        }
-      });
-    }
-  }
+  // ❌ ลบ function deleteUser ออกทั้งหมด
 
   // ======================= NOVELS =======================
-  // ✅ ใช้วิธีเดียวกับ home.ts - โหลดจาก /api/v1/novels
   loadNovels() {
     console.log('🟡 loadNovels() ถูกเรียก');
     this.loadingNovels = true;
     this.cdr.detectChanges();
     
-    // ✅ ใช้ Http GET แบบเดียวกับ home
-    this.http.get<any[]>(`${this.apiUrl}/novels`).subscribe({
-      next: (novels) => {
-        console.log('🟢 โหลดนิยายสำเร็จ:', novels.length);
-        // ✅ filter เอาเฉพาะ published เพื่อความสวยงาม หรือจะเอาทุกเรื่องก็ได้
-        this.novels = novels;  // หรือ novels.filter(n => n.status === 'published')
+    this.adminService.getNovels().subscribe({
+      next: (res) => {
+        console.log('🟢 โหลดนิยายสำเร็จ:', res.novels?.length);
+        this.novels = res.novels || [];
+        this.totalNovels = res.total || 0;
         this.loadingNovels = false;
+        this.currentPage = 1;
         this.cdr.detectChanges();
       },
       error: (err) => {
@@ -173,7 +283,6 @@ export class AdminDashboardComponent implements OnInit {
       novel.status = newStatus;
       this.cdr.detectChanges();
       
-      // ✅ ใช้ update จาก admin service
       this.adminService.updateNovelStatus(novel.id, newStatus).subscribe({
         next: (res) => {
           console.log('🟢 อัปเดตสถานะนิยายสำเร็จ:', res);
@@ -194,6 +303,7 @@ export class AdminDashboardComponent implements OnInit {
       this.adminService.deleteNovel(novel.id).subscribe({
         next: () => {
           this.novels = this.novels.filter(n => n.id !== novel.id);
+          this.totalNovels = this.novels.length;
           this.cdr.detectChanges();
           alert('ลบนิยายสำเร็จ');
         },
@@ -205,94 +315,21 @@ export class AdminDashboardComponent implements OnInit {
     }
   }
 
-  // ======================= WITHDRAWALS =======================
-  loadWithdrawals() {
-    console.log('🟡 loadWithdrawals() ถูกเรียก');
-    this.loadingWithdrawals = true;
-    this.cdr.detectChanges();
-    
-    this.adminService.getWithdrawals().subscribe({
-      next: (res) => {
-        console.log('🟢 โหลดคำขอถอนเงินสำเร็จ:', res.withdrawals?.length);
-        this.withdrawals = res.withdrawals || [];
-        this.loadingWithdrawals = false;
-        this.cdr.detectChanges();
-      },
-      error: (err) => {
-        console.error('🔴 โหลดคำขอถอนเงินล้มเหลว:', err);
-        this.loadingWithdrawals = false;
-        this.cdr.detectChanges();
-        // ✅ ถ้ายังไม่มี API ก็แค่แสดงว่าไม่มีข้อมูล
-        if (err.status === 404) {
-          console.log('⚠️ Withdrawals API ยังไม่มี');
-          this.withdrawals = [];
-          this.loadingWithdrawals = false;
-        } else {
-          alert('โหลดข้อมูลคำขอถอนเงินล้มเหลว');
-        }
-      }
-    });
-  }
-
-  updateWithdrawalStatus(withdrawal: Withdrawal, event: Event) {
-    const select = event.target as HTMLSelectElement;
-    const newStatus = select.value;
-    
-    if (confirm(`เปลี่ยนสถานะคำขอถอนเงิน ${withdrawal.amount} บาท ของ ${withdrawal.username} เป็น ${newStatus}?`)) {
-      const oldStatus = withdrawal.status;
-      withdrawal.status = newStatus;
-      this.cdr.detectChanges();
-      
-      this.adminService.updateWithdrawalStatus(withdrawal.id, newStatus).subscribe({
-        next: (res) => {
-          console.log('🟢 อัปเดตสถานะสำเร็จ:', res);
-          alert(`อัปเดตสถานะเป็น ${newStatus} สำเร็จ`);
-        },
-        error: (err) => {
-          console.error('🔴 อัปเดตล้มเหลว:', err);
-          withdrawal.status = oldStatus;
-          this.cdr.detectChanges();
-          alert('อัปเดตสถานะล้มเหลว');
-        }
-      });
-    }
-  }
-
-  deleteWithdrawal(withdrawal: Withdrawal) {
-    if (confirm(`⚠️ ลบคำขอถอนเงิน ${withdrawal.amount} บาท ของ ${withdrawal.username}?`)) {
-      this.adminService.deleteWithdrawal(withdrawal.id).subscribe({
-        next: () => {
-          this.withdrawals = this.withdrawals.filter(w => w.id !== withdrawal.id);
-          this.cdr.detectChanges();
-          alert('ลบคำขอถอนเงินสำเร็จ');
-        },
-        error: (err) => {
-          console.error('🔴 ลบล้มเหลว:', err);
-          alert('ลบคำขอถอนเงินล้มเหลว');
-        }
-      });
-    }
-  }
-
   // ======================= UTILS =======================
-  changeTab(tab: 'users' | 'novels' | 'withdrawals') {
+  changeTab(tab: 'users' | 'novels') {
     this.activeTab = tab;
-    
-    switch(tab) {
-      case 'users':
-        this.loadUsers();
-        break;
-      case 'novels':
-        if (this.novels.length === 0) this.loadNovels();
-        break;
-      case 'withdrawals':
-        if (this.withdrawals.length === 0) this.loadWithdrawals();
-        break;
-    }
+    this.searchKeyword = '';
+    this.currentPage = 1;
+    this.cdr.detectChanges();
   }
 
   goBack() {
     this.router.navigate(['/']);
+  }
+
+  logout() {
+    this.userService.logout();
+    this.router.navigate(['/auth']);
   }
 
   formatNumber(value: number): string {

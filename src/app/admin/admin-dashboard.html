@@ -16,31 +16,51 @@
     </div>
   </div>
 
-  <!-- Tabs -->
+  <!-- Tabs + Search Bar -->
   <div class="border-b border-[#1D267D] px-6">
-    <div class="flex gap-1 overflow-x-auto">
-      <button (click)="changeTab('users')" 
-              [class]="activeTab === 'users' ? 'bg-[#5C469C] text-white' : 'text-[#7B6FA0] hover:text-[#D4ADFC]'"
-              class="px-5 py-3 text-sm font-medium transition-colors rounded-t-lg">
-        👥 จัดการผู้ใช้
-      </button>
-      <button (click)="changeTab('novels')" 
-              [class]="activeTab === 'novels' ? 'bg-[#5C469C] text-white' : 'text-[#7B6FA0] hover:text-[#D4ADFC]'"
-              class="px-5 py-3 text-sm font-medium transition-colors rounded-t-lg">
-        📚 จัดการนิยาย
-      </button>
-      <button (click)="changeTab('withdrawals')" 
-              [class]="activeTab === 'withdrawals' ? 'bg-[#5C469C] text-white' : 'text-[#7B6FA0] hover:text-[#D4ADFC]'"
-              class="px-5 py-3 text-sm font-medium transition-colors rounded-t-lg">
-        💰 คำขอถอนเงิน
-      </button>
+    <div class="flex items-center justify-between flex-wrap gap-3 py-2">
+      <!-- Tab buttons -->
+      <div class="flex gap-1 overflow-x-auto">
+        <button (click)="changeTab('users')" 
+                [class]="activeTab === 'users' ? 'bg-[#5C469C] text-white' : 'text-[#7B6FA0] hover:text-[#D4ADFC]'"
+                class="px-5 py-3 text-sm font-medium transition-colors rounded-t-lg">
+          👥 จัดการผู้ใช้ ({{ totalUsers }})
+        </button>
+        <button (click)="changeTab('novels')" 
+                [class]="activeTab === 'novels' ? 'bg-[#5C469C] text-white' : 'text-[#7B6FA0] hover:text-[#D4ADFC]'"
+                class="px-5 py-3 text-sm font-medium transition-colors rounded-t-lg">
+          📚 จัดการนิยาย ({{ totalNovels }})
+        </button>
+      </div>
+
+      <!-- 🔍 Search Box -->
+      <div class="relative">
+        <input 
+          type="text"
+          [(ngModel)]="searchKeyword"
+          (input)="onSearch()"
+          [placeholder]="activeTab === 'users' ? '🔍 ค้นหาชื่อหรืออีเมล...' : '🔍 ค้นหาชื่อนิยายหรือนามปากกา...'"
+          class="bg-[#1D267D] border border-[#5C469C] rounded-lg px-4 py-2 pr-8 text-sm text-white placeholder-[#7B6FA0] focus:outline-none focus:border-[#D4ADFC] transition-colors w-64"
+        />
+        <button 
+          *ngIf="searchKeyword"
+          (click)="clearSearch()"
+          class="absolute right-2 top-1/2 -translate-y-1/2 text-[#7B6FA0] hover:text-[#D4ADFC] text-sm">
+          ✕
+        </button>
+      </div>
     </div>
   </div>
 
   <!-- ======================= TAB 1: จัดการผู้ใช้ ======================= -->
   <div *ngIf="activeTab === 'users'" class="p-6">
     <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
-      <h2 class="text-lg font-semibold text-white">รายชื่อผู้ใช้ทั้งหมด ({{ totalUsers }} คน)</h2>
+      <h2 class="text-lg font-semibold text-white">
+        รายชื่อผู้ใช้ทั้งหมด 
+        <span *ngIf="searchKeyword" class="text-sm text-[#D4ADFC]">
+          (ค้นหา: "{{ searchKeyword }}" → {{ filteredUsers.length }} รายการ)
+        </span>
+      </h2>
       <button (click)="loadUsers()" class="text-xs text-[#D4ADFC] hover:text-[#B085E8] transition-colors">
         🔄 รีเฟรช
       </button>
@@ -52,7 +72,7 @@
     </div>
 
     <!-- Users Table -->
-    <div *ngIf="!loading && users.length > 0" class="overflow-x-auto">
+    <div *ngIf="!loading && filteredUsers.length > 0" class="overflow-x-auto">
       <table class="w-full text-sm">
         <thead class="border-b border-[#5C469C]/30">
           <tr class="text-left text-[#7B6FA0]">
@@ -63,35 +83,23 @@
             <th class="pb-3 px-2">บทบาท</th>
             <th class="pb-3 px-2">สถานะ</th>
             <th class="pb-3 px-2">วันที่สมัคร</th>
-            <th class="pb-3 px-2">จัดการ</th>
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let user of users" class="border-b border-[#5C469C]/20 hover:bg-[#5C469C]/10 transition-colors">
-            <!-- ID -->
+          <tr *ngFor="let user of paginatedUsers" class="border-b border-[#5C469C]/20 hover:bg-[#5C469C]/10 transition-colors">
             <td class="py-3 px-2 text-[#9B8CC4]">{{ user.id }}</td>
-            
-            <!-- Username -->
             <td class="py-3 px-2 font-medium text-white">
               {{ user.username }}
               <span *ngIf="user.username === 'admin'" class="ml-1 text-[10px] bg-[#D4ADFC]/20 text-[#D4ADFC] px-1 rounded">👑</span>
             </td>
-            
-            <!-- Email -->
             <td class="py-3 px-2 text-[#9B8CC4]">{{ user.email }}</td>
-            
-            <!-- Coin Balance -->
             <td class="py-3 px-2">{{ formatNumber(user.coin_balance) }} 🪙</td>
-            
-            <!-- Role (แสดงอย่างเดียว) -->
             <td class="py-3 px-2">
               <div class="flex items-center gap-1">
                 <span *ngIf="user.role === 'admin'" class="text-[#D4ADFC]">👑 Admin</span>
                 <span *ngIf="user.role !== 'admin'" class="text-[#7B6FA0]">👤 User</span>
               </div>
             </td>
-            
-            <!-- Status (ปุ่มแบน/ปลดแบน) -->
             <td class="py-3 px-2">
               <button (click)="toggleUserStatus(user)" 
                       [disabled]="user.username === 'admin'"
@@ -105,36 +113,74 @@
                 {{ user.status === 'active' ? '✅ ปลดแบน' : '❌ แบนแล้ว' }}
               </button>
             </td>
-            
-            <!-- Created At -->
             <td class="py-3 px-2 text-xs text-[#7B6FA0]">{{ user.created_at | date:'dd/MM/yyyy' }}</td>
-            
-            <!-- Delete Button -->
-            <td class="py-3 px-2">
-              <button (click)="deleteUser(user)" 
-                      [disabled]="user.username === 'admin'"
-                      class="text-red-400 hover:text-red-300 text-xs disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
-                🗑️ ลบ
-              </button>
-            </td>
           </tr>
         </tbody>
       </table>
+
+      <!-- Pagination Users -->
+      <div class="flex justify-between items-center mt-4 pt-4 border-t border-[#5C469C]/30">
+        <div class="text-sm text-[#7B6FA0]">
+          แสดง {{ (currentPage - 1) * itemsPerPage + 1 }} - 
+          {{ currentPage * itemsPerPage > filteredUsers.length ? filteredUsers.length : currentPage * itemsPerPage }} 
+          จาก {{ filteredUsers.length }} รายการ
+        </div>
+        
+        <div class="flex gap-1">
+          <button (click)="prevPage()" 
+                  [disabled]="currentPage === 1"
+                  class="px-3 py-1 rounded-lg text-sm bg-[#1D267D] hover:bg-[#5C469C] disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+            ◀
+          </button>
+          
+          <button *ngFor="let page of getPages()" 
+                  (click)="page !== -1 && goToPage(page)"
+                  [class.bg-[#5C469C]]="page === currentPage"
+                  [class.bg-[#1D267D]]="page !== currentPage && page !== -1"
+                  [class.opacity-50]="page === -1"
+                  [class.cursor-default]="page === -1"
+                  class="px-3 py-1 rounded-lg text-sm hover:bg-[#5C469C] transition-colors">
+            <span *ngIf="page === -1">...</span>
+            <span *ngIf="page !== -1">{{ page }}</span>
+          </button>
+          
+          <button (click)="nextPage()" 
+                  [disabled]="currentPage === totalPages"
+                  class="px-3 py-1 rounded-lg text-sm bg-[#1D267D] hover:bg-[#5C469C] disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+            ▶
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Empty State -->
-    <div *ngIf="!loading && users.length === 0" class="text-center py-10 text-[#7B6FA0]">
-      ไม่พบข้อมูลผู้ใช้
+    <div *ngIf="!loading && filteredUsers.length === 0" class="text-center py-10 text-[#7B6FA0]">
+      <span *ngIf="searchKeyword">ไม่พบผู้ใช้ที่ตรงกับ "{{ searchKeyword }}"</span>
+      <span *ngIf="!searchKeyword">ไม่พบข้อมูลผู้ใช้</span>
     </div>
   </div>
 
   <!-- ======================= TAB 2: จัดการนิยาย ======================= -->
   <div *ngIf="activeTab === 'novels'" class="p-6">
     <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
-      <h2 class="text-lg font-semibold text-white">📚 จัดการนิยายทั้งหมด</h2>
-      <button (click)="loadNovels()" class="text-xs text-[#D4ADFC] hover:text-[#B085E8] transition-colors">
-        🔄 รีเฟรช
-      </button>
+      <h2 class="text-lg font-semibold text-white">
+        📚 จัดการนิยายทั้งหมด
+        <span *ngIf="searchKeyword" class="text-sm text-[#D4ADFC]">
+          (ค้นหา: "{{ searchKeyword }}" → {{ filteredNovels.length }} รายการ)
+        </span>
+      </h2>
+      <div class="flex gap-2">
+        <button (click)="toggleSortOrder()" 
+                class="text-xs bg-[#1D267D] hover:bg-[#5C469C] px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1">
+          🔽 เรียงตาม ID 
+          <span class="text-[#D4ADFC]">
+            {{ sortOrder === 'desc' ? '⬇️ ล่าสุดก่อน' : '⬆️ เก่าสุดก่อน' }}
+          </span>
+        </button>
+        <button (click)="loadNovels()" class="text-xs text-[#D4ADFC] hover:text-[#B085E8] transition-colors">
+          🔄 รีเฟรช
+        </button>
+      </div>
     </div>
 
     <!-- Loading -->
@@ -143,11 +189,16 @@
     </div>
 
     <!-- Novels Table -->
-    <div *ngIf="!loadingNovels && novels.length > 0" class="overflow-x-auto">
+    <div *ngIf="!loadingNovels && filteredNovels.length > 0" class="overflow-x-auto">
       <table class="w-full text-sm">
         <thead class="border-b border-[#5C469C]/30">
           <tr class="text-left text-[#7B6FA0]">
-            <th class="pb-3 px-2">ID</th>
+            <th class="pb-3 px-2 cursor-pointer hover:text-[#D4ADFC]" (click)="toggleSortOrder()">
+              ID 
+              <span class="text-xs">
+                {{ sortOrder === 'desc' ? '▼' : '▲' }}
+              </span>
+            </th>
             <th class="pb-3 px-2">ชื่อนิยาย</th>
             <th class="pb-3 px-2">ชื่อนักเขียน</th>
             <th class="pb-3 px-2">สถานะ</th>
@@ -157,7 +208,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let novel of novels" class="border-b border-[#5C469C]/20 hover:bg-[#5C469C]/10 transition-colors">
+          <tr *ngFor="let novel of paginatedNovels" class="border-b border-[#5C469C]/20 hover:bg-[#5C469C]/10 transition-colors">
             <td class="py-3 px-2 text-[#9B8CC4]">{{ novel.id }}</td>
             <td class="py-3 px-2 font-medium text-white">{{ novel.title }}</td>
             <td class="py-3 px-2 text-[#9B8CC4]">{{ novel.pen_name || '-' }}</td>
@@ -180,73 +231,46 @@
           </tr>
         </tbody>
       </table>
+
+      <!-- Pagination Novels -->
+      <div class="flex justify-between items-center mt-4 pt-4 border-t border-[#5C469C]/30">
+        <div class="text-sm text-[#7B6FA0]">
+          แสดง {{ (currentPage - 1) * itemsPerPage + 1 }} - 
+          {{ currentPage * itemsPerPage > filteredNovels.length ? filteredNovels.length : currentPage * itemsPerPage }} 
+          จาก {{ filteredNovels.length }} รายการ
+        </div>
+        
+        <div class="flex gap-1">
+          <button (click)="prevPage()" 
+                  [disabled]="currentPage === 1"
+                  class="px-3 py-1 rounded-lg text-sm bg-[#1D267D] hover:bg-[#5C469C] disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+            ◀
+          </button>
+          
+          <button *ngFor="let page of getPages()" 
+                  (click)="page !== -1 && goToPage(page)"
+                  [class.bg-[#5C469C]]="page === currentPage"
+                  [class.bg-[#1D267D]]="page !== currentPage && page !== -1"
+                  [class.opacity-50]="page === -1"
+                  [class.cursor-default]="page === -1"
+                  class="px-3 py-1 rounded-lg text-sm hover:bg-[#5C469C] transition-colors">
+            <span *ngIf="page === -1">...</span>
+            <span *ngIf="page !== -1">{{ page }}</span>
+          </button>
+          
+          <button (click)="nextPage()" 
+                  [disabled]="currentPage === totalPages"
+                  class="px-3 py-1 rounded-lg text-sm bg-[#1D267D] hover:bg-[#5C469C] disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+            ▶
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Empty State -->
-    <div *ngIf="!loadingNovels && novels.length === 0" class="text-center py-10 text-[#7B6FA0]">
-      ไม่พบข้อมูลนิยาย
-    </div>
-  </div>
-
-  <!-- ======================= TAB 3: คำขอถอนเงิน ======================= -->
-  <div *ngIf="activeTab === 'withdrawals'" class="p-6">
-    <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
-      <h2 class="text-lg font-semibold text-white">💰 คำขอถอนเงินทั้งหมด</h2>
-      <button (click)="loadWithdrawals()" class="text-xs text-[#D4ADFC] hover:text-[#B085E8] transition-colors">
-        🔄 รีเฟรช
-      </button>
-    </div>
-
-    <!-- Loading -->
-    <div *ngIf="loadingWithdrawals" class="text-center py-10 text-[#7B6FA0]">
-      <div class="animate-pulse">กำลังโหลดข้อมูลคำขอถอนเงิน...</div>
-    </div>
-
-    <!-- Withdrawals Table -->
-    <div *ngIf="!loadingWithdrawals && withdrawals.length > 0" class="overflow-x-auto">
-      <table class="w-full text-sm">
-        <thead class="border-b border-[#5C469C]/30">
-          <tr class="text-left text-[#7B6FA0]">
-            <th class="pb-3 px-2">ID</th>
-            <th class="pb-3 px-2">ผู้ใช้</th>
-            <th class="pb-3 px-2">จำนวนเงิน</th>
-            <th class="pb-3 px-2">ธนาคาร</th>
-            <th class="pb-3 px-2">เลขบัญชี</th>
-            <th class="pb-3 px-2">สถานะ</th>
-            <th class="pb-3 px-2">วันที่ขอ</th>
-            <th class="pb-3 px-2">จัดการ</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let withdrawal of withdrawals" class="border-b border-[#5C469C]/20 hover:bg-[#5C469C]/10 transition-colors">
-            <td class="py-3 px-2 text-[#9B8CC4]">{{ withdrawal.id }}</td>
-            <td class="py-3 px-2 font-medium text-white">{{ withdrawal.username }}</td>
-            <td class="py-3 px-2 text-[#D4ADFC]">{{ withdrawal.amount | number }} บาท</td>
-            <td class="py-3 px-2 text-[#9B8CC4]">{{ withdrawal.bank_name }}</td>
-            <td class="py-3 px-2 text-[#9B8CC4]">{{ withdrawal.bank_account }}</td>
-            <td class="py-3 px-2">
-              <select [value]="withdrawal.status" (change)="updateWithdrawalStatus(withdrawal, $event)"
-                      class="bg-[#1D267D] border border-[#5C469C] rounded-lg px-2 py-1 text-xs cursor-pointer hover:border-[#D4ADFC] transition-colors">
-                <option value="pending">⏳ รอตรวจสอบ</option>
-                <option value="approved">✅ อนุมัติแล้ว</option>
-                <option value="rejected">❌ ปฏิเสธ</option>
-              </select>
-            </td>
-            <td class="py-3 px-2 text-xs text-[#7B6FA0]">{{ withdrawal.created_at | date:'dd/MM/yyyy HH:mm' }}</td>
-            <td class="py-3 px-2">
-              <button (click)="deleteWithdrawal(withdrawal)" 
-                      class="text-red-400 hover:text-red-300 text-xs transition-colors">
-                🗑️ ลบ
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <!-- Empty State -->
-    <div *ngIf="!loadingWithdrawals && withdrawals.length === 0" class="text-center py-10 text-[#7B6FA0]">
-      ไม่พบคำขอถอนเงิน
+    <div *ngIf="!loadingNovels && filteredNovels.length === 0" class="text-center py-10 text-[#7B6FA0]">
+      <span *ngIf="searchKeyword">ไม่พบนิยายที่ตรงกับ "{{ searchKeyword }}"</span>
+      <span *ngIf="!searchKeyword">ไม่พบข้อมูลนิยาย</span>
     </div>
   </div>
 
