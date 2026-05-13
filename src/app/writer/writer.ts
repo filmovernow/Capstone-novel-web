@@ -267,6 +267,15 @@ export class WriterComponent implements OnInit, OnDestroy {
     }
   }
 
+  get isAdmin(): boolean {
+    return this.currentUser?.role === 'admin' || this.currentUser?.username === 'admin';
+  }
+  
+  navigateToAdmin() {
+    this.profileOpen = false;
+    this.router.navigate(['/admin/dashboard']);
+  }
+
   editNovel(id: number) {
     this.router.navigate(['/writer/create'], { queryParams: { novelId: id } });
   }

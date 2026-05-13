@@ -84,7 +84,7 @@ export class StorageComponent implements OnInit {
   private getHeaders() {
     const token = localStorage.getItem('token');
     return new HttpHeaders({
-      Authorization: token || ''
+      'Authorization': `Bearer ${token}`
     });
   }
 
@@ -186,6 +186,12 @@ export class StorageComponent implements OnInit {
       case 'follow': return this.followedNovels;
       default: return [];
     }
+  }
+
+  // ✅ เพิ่ม method สำหรับจัดการ error การโหลดรูป
+  onImageError(item: any) {
+    item.cover_path = null;
+    this.cdr.detectChanges();
   }
 
   // ========== NAVBAR METHODS ==========

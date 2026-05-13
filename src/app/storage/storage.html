@@ -121,8 +121,21 @@
              class="bg-[#1D267D]/60 border border-[#5C469C]/30 rounded-2xl overflow-hidden hover:border-[#D4ADFC]/40 hover:-translate-y-1 transition-all duration-200 cursor-pointer group">
 
           <div class="relative h-40 bg-gradient-to-br from-[#1D267D] to-[#5C469C] flex items-center justify-center">
-            <img *ngIf="item.cover_path" [src]="item.cover_path" class="w-full h-full object-cover">
+            <!-- รูปแบบ URL รูป -->
+            <img *ngIf="item.cover_path && (item.cover_path.includes('http') || item.cover_path.includes('/'))" 
+                 [src]="item.cover_path" 
+                 class="w-full h-full object-cover" 
+                 (error)="onImageError(item)" />
+            
+            <!-- รูปแบบ Emoji (ความยาว <= 5 และไม่ใช่ URL) -->
+            <span *ngIf="item.cover_path && !item.cover_path.includes('http') && !item.cover_path.includes('/') && item.cover_path.length <= 5" 
+                  class="text-5xl opacity-80">
+              {{item.cover_path}}
+            </span>
+            
+            <!-- Default ถ้าไม่มีปก -->
             <span *ngIf="!item.cover_path" class="text-5xl opacity-60">📖</span>
+            
             <div *ngIf="item.lastRead" class="absolute bottom-2 right-2 text-[10px] bg-black/50 px-2 py-0.5 rounded-full">
               {{item.lastRead | date:'dd/MM/yy'}}
             </div>

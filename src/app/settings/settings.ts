@@ -216,5 +216,13 @@ export class SettingsComponent implements OnInit {
 
     this.showToastMessage('เลือกรูปภาพเรียบร้อยแล้ว ✅', 'success');
   }
+    get isAdmin(): boolean {
+    return this.currentUser?.role === 'admin' || this.currentUser?.username === 'admin';
+  }
+  
+  navigateToAdmin() {
+    this.profileOpen = false;
+    this.router.navigate(['/admin/dashboard']);
+  }
 
 }

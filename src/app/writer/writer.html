@@ -52,6 +52,11 @@
                 </div>
               </div>
 
+              <div *ngIf="isAdmin" class="border-b border-[#5C469C]/30">
+                <div (click)="navigateToAdmin()" class="flex items-center gap-3 px-4 py-2.5 text-sm text-[#D4ADFC] bg-[#5C469C]/20 hover:bg-[#5C469C]/40 transition-colors cursor-pointer">
+                  <span>📊</span> Dashboard Admin
+                </div>
+              </div>
               <div class="py-1.5">
                 <div (click)="navigateTo('/writer')" class="flex items-center gap-3 px-4 py-2.5 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30 hover:text-white transition-colors cursor-pointer">
                   <span>✍️</span> เขียนนิยาย

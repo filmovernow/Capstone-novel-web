@@ -1,4 +1,3 @@
-// novel-reader.ts
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -22,7 +21,18 @@ interface Chapter {
   is_liked?: boolean;
   price?: number;
   freeDate?: string;
-  isEarlyAccess?: boolean; 
+  isEarlyAccess?: boolean;
+}
+
+interface Comment {
+  id: number;
+  content: string;
+  user: {
+    id: number;
+    username: string;
+    avatar_path: string | null;
+  };
+  created_at: string;
 }
 
 @Component({
@@ -68,12 +78,20 @@ export class NovelReaderComponent implements OnInit, OnDestroy {
   unlockTargetChapter: Chapter | null = null;
   showPurchaseNovelConfirm = false;
   
+  // ✅ Comment properties
+  comments: Comment[] = [];
+  commentLoading = false;
+  commentPage = 1;
+  commentHasMore = true;
+  isSubmittingComment = false;
+  showCommentSection = false;
+  totalCommentsCount = 0;
+  
   private isPurchasingNovel = false;
   private isLoading = false;
   private currentLoadingChapterId: number | null = null;
   private currentChapterSub: any = null;
   private canGoBack = false;
-  
   private previousChapterId = 0;
 
   constructor(
@@ -82,13 +100,9 @@ export class NovelReaderComponent implements OnInit, OnDestroy {
     private cdr: ChangeDetectorRef, 
     private userService: UserService,
     private sanitizer: DomSanitizer,
-    public  router: Router,
+    public router: Router,
     private location: Location
   ) {}
-
-  goToTopup() {
-    this.router.navigate(['/topup']);
-  }
 
   ngOnInit() {
     this.userService.loadProfile();
@@ -124,6 +138,14 @@ export class NovelReaderComponent implements OnInit, OnDestroy {
       }
     });
   }
+
+  ngOnDestroy() {
+    if (this.currentChapterSub) {
+      this.currentChapterSub.unsubscribe();
+    }
+  }
+
+  // ==================== HELPER METHODS ====================
   
   formatNumber(value: number): string {
     if (value === undefined || value === null) return '0';
@@ -131,27 +153,21 @@ export class NovelReaderComponent implements OnInit, OnDestroy {
     if (value >= 1000) return (value / 1000).toFixed(1) + 'K';
     return value.toString();
   }
-  
-  private checkHistoryBack() {
-    if (document.referrer && document.referrer !== '') {
-      const referrerUrl = new URL(document.referrer);
-      const currentUrl = new URL(window.location.href);
-      if (referrerUrl.origin === currentUrl.origin && referrerUrl.pathname !== currentUrl.pathname) {
-        this.canGoBack = true;
-      }
-    }
-    if (window.history.length > 1) {
-      this.canGoBack = true;
-    }
-  }
-  
-  shareNovel() {
-    const url = window.location.href;
-    navigator.clipboard.writeText(url).then(() => {
-      this.showToast('✅ คัดลอกลิงก์นิยายเรียบร้อยแล้ว');
-    }).catch(() => {
-      this.showToast('❌ คัดลอกไม่สำเร็จ กรุณาลองอีกครั้ง');
-    });
+
+  formatCommentDate(dateString: string): string {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+    
+    if (diffMins < 1) return 'เมื่อสักครู่';
+    if (diffMins < 60) return `${diffMins} นาทีที่แล้ว`;
+    if (diffHours < 24) return `${diffHours} ชั่วโมงที่แล้ว`;
+    if (diffDays < 7) return `${diffDays} วันที่แล้ว`;
+    
+    return date.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
   }
 
   showToast(message: string) {
@@ -179,38 +195,11 @@ export class NovelReaderComponent implements OnInit, OnDestroy {
     }, 2000);
   }
 
-  goBack() {
-    if (this.canGoBack && window.history.length > 1) {
-      this.location.back();
-      return;
-    }
-    if (this.previousUrl && this.previousUrl !== '/') {
-      this.router.navigateByUrl(this.previousUrl);
-      return;
-    }
-    this.router.navigate(['/']);
-  }
-
-  ngOnDestroy() {
-    if (this.currentChapterSub) {
-      this.currentChapterSub.unsubscribe();
-    }
-  }
-
   getHeaders() {
     const token = localStorage.getItem('token');
     return new HttpHeaders({
       'Authorization': `Bearer ${token}`
     });
-  }
-
-  toggleProfile() {
-    this.profileOpen = !this.profileOpen;
-  }
-
-  logout() {
-    this.userService.logout();
-    this.router.navigate(['/']);
   }
 
   getLastReadChapter(): number | null {
@@ -224,6 +213,62 @@ export class NovelReaderComponent implements OnInit, OnDestroy {
     return null;
   }
 
+  // ==================== NAVIGATION ====================
+  
+  private checkHistoryBack() {
+    if (document.referrer && document.referrer !== '') {
+      const referrerUrl = new URL(document.referrer);
+      const currentUrl = new URL(window.location.href);
+      if (referrerUrl.origin === currentUrl.origin && referrerUrl.pathname !== currentUrl.pathname) {
+        this.canGoBack = true;
+      }
+    }
+    if (window.history.length > 1) {
+      this.canGoBack = true;
+    }
+  }
+
+  goBack() {
+    if (this.canGoBack && window.history.length > 1) {
+      this.location.back();
+      return;
+    }
+    if (this.previousUrl && this.previousUrl !== '/') {
+      this.router.navigateByUrl(this.previousUrl);
+      return;
+    }
+    this.router.navigate(['/']);
+  }
+
+  goToTopup() {
+    this.router.navigate(['/topup']);
+  }
+
+  navigateTo(path: string) {
+    this.profileOpen = false;
+    this.router.navigate([path]);
+  }
+
+  toggleProfile() {
+    this.profileOpen = !this.profileOpen;
+  }
+
+  logout() {
+    this.userService.logout();
+    this.router.navigate(['/']);
+  }
+
+  shareNovel() {
+    const url = window.location.href;
+    navigator.clipboard.writeText(url).then(() => {
+      this.showToast('✅ คัดลอกลิงก์นิยายเรียบร้อยแล้ว');
+    }).catch(() => {
+      this.showToast('❌ คัดลอกไม่สำเร็จ กรุณาลองอีกครั้ง');
+    });
+  }
+
+  // ==================== LOAD DATA ====================
+  
   async loadAllData() {
     if (this.isLoading) return;
     this.isLoading = true;
@@ -231,7 +276,6 @@ export class NovelReaderComponent implements OnInit, OnDestroy {
     const headers = this.getHeaders();
     
     try {
-      // 1. โหลดข้อมูลนิยาย
       const novel: any = await firstValueFrom(
         this.http.get<any>(`${this.apiUrl}/novels/${this.novelId}`, { headers })
       );
@@ -240,7 +284,6 @@ export class NovelReaderComponent implements OnInit, OnDestroy {
       this.novelTitle = novel.title || '';
       this.authorName = novel.pen_name || 'ไม่ทราบผู้แต่ง';
       
-      // ✅ จัดการ cover_path ให้รองรับทั้ง URL และ Emoji
       if (novel.cover_path) {
         if (novel.cover_path.startsWith('http') || novel.cover_path.includes('/')) {
           this.coverPath = novel.cover_path;
@@ -264,12 +307,10 @@ export class NovelReaderComponent implements OnInit, OnDestroy {
       this.hasAccessToNovel = this.isNovelOwner || this.hasPurchasedNovel;
       this.pricingModel = novel.pricing_model || 'free';
       
-      // 2. โหลดรายการตอนทั้งหมด
       const chaptersRes: any[] = await firstValueFrom(
         this.http.get<any[]>(`${this.apiUrl}/novels/${this.novelId}/chapters`, { headers })
       );
       
-      // 3. โหลดรายการตอนที่ User เคยปลดล็อคแล้ว
       let unlockedChapters: number[] = [];
       if (this.currentUser) {
         try {
@@ -282,7 +323,6 @@ export class NovelReaderComponent implements OnInit, OnDestroy {
         }
       }
       
-      // 4. Mapping ข้อมูลตอนพร้อมคำนวณสิทธิ์การเข้าถึง
       const mappedChapters: Chapter[] = chaptersRes.map(ch => {
         let isEarlyAccess = false;
         let isPaid = false;
@@ -292,7 +332,7 @@ export class NovelReaderComponent implements OnInit, OnDestroy {
         let isDisabled = false;
 
         if (ch.free_date) {
-           freeDateObj = new Date(ch.free_date);
+          freeDateObj = new Date(ch.free_date);
         }
 
         if (this.pricingModel === 'early_access') {
@@ -310,21 +350,21 @@ export class NovelReaderComponent implements OnInit, OnDestroy {
         }
 
         if (this.hasAccessToNovel) {
-           needsPurchase = false;
-           isDisabled = false;
+          needsPurchase = false;
+          isDisabled = false;
         } else {
-           if (isPaid) {
-              if (unlockedChapters.includes(ch.chapter_no)) {
-                 needsPurchase = false;
-                 isDisabled = false;
-              } else if (this.pricingModel === 'one_time') {
-                 needsPurchase = true; 
-                 isDisabled = true; 
-              } else {
-                 needsPurchase = true;
-                 isDisabled = true;
-              }
-           }
+          if (isPaid) {
+            if (unlockedChapters.includes(ch.chapter_no)) {
+              needsPurchase = false;
+              isDisabled = false;
+            } else if (this.pricingModel === 'one_time') {
+              needsPurchase = true;
+              isDisabled = true;
+            } else {
+              needsPurchase = true;
+              isDisabled = true;
+            }
+          }
         }
 
         return {
@@ -338,19 +378,18 @@ export class NovelReaderComponent implements OnInit, OnDestroy {
           needsPurchase: needsPurchase,
           price: price,
           freeDate: ch.free_date,
-          isEarlyAccess: isEarlyAccess 
+          isEarlyAccess: isEarlyAccess
         };
       });
 
-      // 5. จัดเรียงและรวมบทนำ
       mappedChapters.sort((a, b) => a.chapter_no - b.chapter_no);
 
       this.chapters = [
-        { 
-          id: 0, 
-          chapter_no: 0, 
-          title: 'บทนำ', 
-          isDisabled: false, 
+        {
+          id: 0,
+          chapter_no: 0,
+          title: 'บทนำ',
+          isDisabled: false,
           needsPurchase: false,
           content: this.novelDescription,
           like_count: 0,
@@ -362,12 +401,11 @@ export class NovelReaderComponent implements OnInit, OnDestroy {
       
       this.chapters = [...this.chapters];
 
-      // 6. กำหนดตอนเริ่มต้นที่จะแสดง
       let startChapterId = 0;
       if (this.hasAccessToNovel) {
         const lastChapterId = this.getLastReadChapter();
         startChapterId = lastChapterId !== null && this.chapters.some(c => c.id === lastChapterId && !c.isDisabled)
-          ? lastChapterId 
+          ? lastChapterId
           : 0;
       }
       
@@ -384,130 +422,99 @@ export class NovelReaderComponent implements OnInit, OnDestroy {
     }
   }
 
-  isPrevDisabled(): boolean {
-    const currentIndex = this.chapters.findIndex(c => c.id === this.activeChapterId);
-    return currentIndex <= 0;
-  }
-
-  isNextDisabled(): boolean {
-    const currentIndex = this.chapters.findIndex(c => c.id === this.activeChapterId);
-    return currentIndex >= this.chapters.length - 1;
-  }
-
-  getNextChapter(): Chapter | null {
-    const currentIndex = this.chapters.findIndex(c => c.id === this.activeChapterId);
-    if (currentIndex >= 0 && currentIndex < this.chapters.length - 1) {
-      return this.chapters[currentIndex + 1];
+  // ==================== CHAPTER METHODS ====================
+  
+  loadChapter(id: number) {
+    if (this.currentLoadingChapterId === id) return;
+    if (this.currentChapterSub) {
+      this.currentChapterSub.unsubscribe();
     }
-    return null;
-  }
-
-  private saveProgressAndHistory(id: number) {
-    if (id !== 0) {
-      const progress = localStorage.getItem('reading_progress');
-      let data: any = {};
-      if (progress) {
-        try {
-          data = JSON.parse(progress);
-        } catch(e) {}
-      }
-      data[this.novelId] = id;
-      localStorage.setItem('reading_progress', JSON.stringify(data));
+    
+    this.currentLoadingChapterId = id;
+    
+    if (id === 0) {
+      this.currentContent = this.novelDescription || 'ยังไม่มีเกริ่นนำ';
+      this.safeContent = this.sanitizer.bypassSecurityTrustHtml(this.currentContent);
+      this.currentLoadingChapterId = null;
+      this.saveProgressAndHistory(0);
       
-      if (this.currentUser) {
-        this.http.post(`${this.apiUrl}/reading_histories`, {
-          novel_id: this.novelId,
-          chapter_no: id
-        }, { headers: this.getHeaders() }).subscribe();
-      }
-    }
-  }
-
-  showUnlockModal(chapter: Chapter) {
-    if (this.hasPurchasedNovel || this.isNovelOwner) {
-      this.setActiveChapter(chapter.id);
+      // ✅ reset ค่า
+      this.showCommentSection = false;
+      this.totalCommentsCount = 0;
+      this.comments = [];
+      
+      this.cdr.detectChanges();
       return;
     }
     
-    if (this.pricingModel === 'one_time') {
-      this.openPurchaseNovelConfirm();
-      return;
-    }
-    
-    if (chapter.needsPurchase) {
-      this.unlockTargetChapter = chapter;
-      this.showUnlockConfirmModal = true;
-    } else if (chapter.isDisabled) {
-      alert('กรุณาปลดล็อคตอนก่อนอ่าน');
-    }
-  }
+    const headers = this.getHeaders();
 
-  closeUnlockConfirmModal() {
-    this.showUnlockConfirmModal = false;
-    this.unlockTargetChapter = null;
-  }
-
-  confirmUnlockChapter() {
-    if (!this.unlockTargetChapter) return;
-    
-    this.isPurchasing = true;
-    const chapterId = this.unlockTargetChapter.id;
-    
-    this.http.post(`${this.apiUrl}/novels/${this.novelId}/chapters/${chapterId}/unlock`, {}, { headers: this.getHeaders() })
+    this.currentChapterSub = this.http.get<any>(`${this.apiUrl}/novels/${this.novelId}/chapters/${id}`, { headers })
       .subscribe({
-        next: (res: any) => {
-          alert(`✅ ${res.message}`);
-          if (this.currentUser) {
-            this.currentUser.coin_balance = res.balance;
-          }
-          this.showUnlockConfirmModal = false;
-          this.isPurchasing = false;
-
-          this.chapters = this.chapters.map(ch => {
-          if (ch.id === chapterId) {
-            return { ...ch, isDisabled: false, needsPurchase: false };
-          }
-            return ch;
+        next: (res) => {
+          const rawContent = res.content || 'ไม่มีเนื้อหา';
+          this.chapters = this.chapters.map(c => {
+            if (c.id === id) {
+              return {
+                ...c,
+                content: rawContent,
+                like_count: res.like_count || 0,
+                is_liked: res.is_liked === true,
+                isDisabled: false,
+                needsPurchase: false
+              };
+            }
+            return c;
           });
           
-          this.doLoadChapter(chapterId);
+          this.currentContent = rawContent;
+          this.safeContent = this.sanitizer.bypassSecurityTrustHtml(rawContent);
+          this.currentLoadingChapterId = null;
+          
+          this.saveProgressAndHistory(id);
+          
+          // ✅ ✅ ✅ สำคัญ: โหลดจำนวน comment ทันที
+          this.loadCommentCount();
+          
+          // ✅ รีเซ็ต section (ไม่ต้องโหลด content comments จนกว่าจะกด)
+          this.showCommentSection = false;
+          
           this.cdr.detectChanges();
         },
         error: (err) => {
-          this.isPurchasing = false;
-          if (err.status === 409) {
-            alert('คุณปลดล็อคตอนนี้ไปแล้ว');
-            this.showUnlockConfirmModal = false;
-            this.loadAllData();
-          } else if (err.status === 402) {
-            alert(`❌ ${err.error?.error || 'เหรียญไม่พอ กรุณาเติมเงิน'}`);
-            this.router.navigate(['/topup']);
+          this.activeChapterId = this.previousChapterId;
+          
+          if (err.status === 402 && err.error) {
+            this.unlockTargetChapter = this.chapters.find(c => c.id === id) || null;
+            if (this.unlockTargetChapter) {
+              this.showUnlockConfirmModal = true;
+            }
+            this.currentLoadingChapterId = null;
+            this.cdr.detectChanges();
           } else {
-            alert('เกิดข้อผิดพลาด กรุณาลองอีกครั้ง');
+            this.currentContent = 'ไม่สามารถโหลดเนื้อหาได้';
+            this.safeContent = this.sanitizer.bypassSecurityTrustHtml('ไม่สามารถโหลดเนื้อหาได้');
+            this.currentLoadingChapterId = null;
+            this.cdr.detectChanges();
           }
         }
       });
   }
 
-  openPurchaseNovelConfirm() {
-    if (this.hasPurchasedNovel) {
-      alert('คุณซื้อนิยายเรื่องนี้ไปแล้ว');
-      return;
-    }
-    if (this.isNovelOwner) {
-      alert('คุณเป็นเจ้าของนิยายเรื่องนี้');
-      return;
-    }
-    this.showPurchaseNovelConfirm = true;
-  }
-
-  closePurchaseNovelConfirm() {
-    this.showPurchaseNovelConfirm = false;
-  }
-
-  navigateTo(path: string) {
-    this.profileOpen = false;
-    this.router.navigate([path]);
+  private doLoadChapter(id: number) {
+    this.previousChapterId = this.activeChapterId;
+    this.activeChapterId = id;
+    
+    // ✅ ✅ ✅ สำคัญ: reset ค่าก่อนโหลด chapter ใหม่
+    this.totalCommentsCount = 0;      // reset จำนวน comment
+    this.comments = [];               // reset list comments
+    this.showCommentSection = false;  // ปิด section
+    this.commentPage = 1;             // reset page
+    this.commentHasMore = true;       // reset hasMore
+    
+    this.loadChapter(id);
+    
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   setActiveChapter(id: number) {
@@ -546,91 +553,6 @@ export class NovelReaderComponent implements OnInit, OnDestroy {
     this.doLoadChapter(id);
   }
 
-  private doLoadChapter(id: number) {
-    this.previousChapterId = this.activeChapterId; 
-    this.activeChapterId = id;
-    this.loadChapter(id);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
-  loadChapter(id: number) {
-    if (this.currentLoadingChapterId === id) return;
-    if (this.currentChapterSub) {
-      this.currentChapterSub.unsubscribe();
-    }
-    
-    this.currentLoadingChapterId = id;
-    
-    if (id === 0) {
-      this.currentContent = this.novelDescription || 'ยังไม่มีเกริ่นนำ';
-      this.safeContent = this.sanitizer.bypassSecurityTrustHtml(this.currentContent);
-      this.currentLoadingChapterId = null;
-      this.saveProgressAndHistory(0);
-      this.cdr.detectChanges();
-      return;
-    }
-    
-    const headers = this.getHeaders();
-
-    this.currentChapterSub = this.http.get<any>(`${this.apiUrl}/novels/${this.novelId}/chapters/${id}`, { headers })
-      .subscribe({
-        next: (res) => {
-          const rawContent = res.content || 'ไม่มีเนื้อหา';
-          this.chapters = this.chapters.map(c => {
-            if (c.id === id) {
-              return {
-                ...c,
-                content: rawContent,
-                like_count: res.like_count || 0,
-                is_liked: res.is_liked === true,
-                isDisabled: false,
-                needsPurchase: false
-              };
-            }
-            return c;
-          });
-          
-          this.currentContent = rawContent;
-          this.safeContent = this.sanitizer.bypassSecurityTrustHtml(rawContent);
-          this.currentLoadingChapterId = null;
-          
-          this.saveProgressAndHistory(id);
-          this.cdr.detectChanges();
-        },
-        error: (err) => {
-          this.activeChapterId = this.previousChapterId;
-          
-          if (err.status === 402 && err.error) {
-            this.unlockTargetChapter = this.chapters.find(c => c.id === id) || null;
-            if (this.unlockTargetChapter) {
-               this.showUnlockConfirmModal = true;
-            }
-            this.currentLoadingChapterId = null;
-            this.cdr.detectChanges();
-          } else {
-            this.currentContent = 'ไม่สามารถโหลดเนื้อหาได้';
-            this.safeContent = this.sanitizer.bypassSecurityTrustHtml('ไม่สามารถโหลดเนื้อหาได้');
-            this.currentLoadingChapterId = null;
-            this.cdr.detectChanges();
-          }
-        }
-      });
-  }
-
-  get currentChapter() {
-    return this.chapters.find(c => c.id === this.activeChapterId);
-  }
-  
-  get progressPercent() {
-    if (this.chapters.length <= 1) return 100;
-    const index = this.chapters.findIndex(c => c.id === this.activeChapterId);
-    return (index / (this.chapters.length - 1)) * 100;
-  }
-
-  changeFontSize(delta: number) {
-    this.fontSize = Math.min(Math.max(this.fontSize + delta, 12), 30);
-  }
-
   nextChapter() {
     const currentIndex = this.chapters.findIndex(c => c.id === this.activeChapterId);
     if (currentIndex < this.chapters.length - 1) {
@@ -647,12 +569,67 @@ export class NovelReaderComponent implements OnInit, OnDestroy {
     }
   }
 
+  isPrevDisabled(): boolean {
+    const currentIndex = this.chapters.findIndex(c => c.id === this.activeChapterId);
+    return currentIndex <= 0;
+  }
+
+  isNextDisabled(): boolean {
+    const currentIndex = this.chapters.findIndex(c => c.id === this.activeChapterId);
+    return currentIndex >= this.chapters.length - 1;
+  }
+
+  getNextChapter(): Chapter | null {
+    const currentIndex = this.chapters.findIndex(c => c.id === this.activeChapterId);
+    if (currentIndex >= 0 && currentIndex < this.chapters.length - 1) {
+      return this.chapters[currentIndex + 1];
+    }
+    return null;
+  }
+
+  get currentChapter() {
+    return this.chapters.find(c => c.id === this.activeChapterId);
+  }
+
+  get progressPercent() {
+    if (this.chapters.length <= 1) return 100;
+    const index = this.chapters.findIndex(c => c.id === this.activeChapterId);
+    return (index / (this.chapters.length - 1)) * 100;
+  }
+
   get wordCount() {
     if (!this.currentContent) return 0;
     const stripped = this.currentContent.replace(/<[^>]*>/g, '');
     return stripped.length;
   }
 
+  changeFontSize(delta: number) {
+    this.fontSize = Math.min(Math.max(this.fontSize + delta, 12), 30);
+  }
+
+  private saveProgressAndHistory(id: number) {
+    if (id !== 0) {
+      const progress = localStorage.getItem('reading_progress');
+      let data: any = {};
+      if (progress) {
+        try {
+          data = JSON.parse(progress);
+        } catch(e) {}
+      }
+      data[this.novelId] = id;
+      localStorage.setItem('reading_progress', JSON.stringify(data));
+      
+      if (this.currentUser) {
+        this.http.post(`${this.apiUrl}/reading_histories`, {
+          novel_id: this.novelId,
+          chapter_no: id
+        }, { headers: this.getHeaders() }).subscribe();
+      }
+    }
+  }
+
+  // ==================== LIKE & FOLLOW ====================
+  
   toggleLike() {
     if (!this.currentUser) {
       alert('กรุณาเข้าสู่ระบบเพื่อถูกใจตอนนี้');
@@ -681,7 +658,7 @@ export class NovelReaderComponent implements OnInit, OnDestroy {
             };
           }
           return c;
-        });        
+        });
         this.isLiking = false;
         this.cdr.detectChanges();
       },
@@ -725,6 +702,24 @@ export class NovelReaderComponent implements OnInit, OnDestroy {
         error: (err) => console.error('Error following:', err)
       });
     }
+  }
+
+  // ==================== PURCHASE & UNLOCK ====================
+  
+  openPurchaseNovelConfirm() {
+    if (this.hasPurchasedNovel) {
+      alert('คุณซื้อนิยายเรื่องนี้ไปแล้ว');
+      return;
+    }
+    if (this.isNovelOwner) {
+      alert('คุณเป็นเจ้าของนิยายเรื่องนี้');
+      return;
+    }
+    this.showPurchaseNovelConfirm = true;
+  }
+
+  closePurchaseNovelConfirm() {
+    this.showPurchaseNovelConfirm = false;
   }
 
   purchaseNovel() {
@@ -809,11 +804,250 @@ export class NovelReaderComponent implements OnInit, OnDestroy {
       });
   }
 
-  checkPurchasedStatus(): boolean {
-    const localFlag = localStorage.getItem(`purchased_${this.novelId}`);
-    if (localFlag === 'true') {
-      return true;
+  showUnlockModal(chapter: Chapter) {
+    if (this.hasPurchasedNovel || this.isNovelOwner) {
+      this.setActiveChapter(chapter.id);
+      return;
     }
-    return this.hasPurchasedNovel;
+    
+    if (this.pricingModel === 'one_time') {
+      this.openPurchaseNovelConfirm();
+      return;
+    }
+    
+    if (chapter.needsPurchase) {
+      this.unlockTargetChapter = chapter;
+      this.showUnlockConfirmModal = true;
+    } else if (chapter.isDisabled) {
+      alert('กรุณาปลดล็อคตอนก่อนอ่าน');
+    }
+  }
+
+  closeUnlockConfirmModal() {
+    this.showUnlockConfirmModal = false;
+    this.unlockTargetChapter = null;
+  }
+
+  confirmUnlockChapter() {
+    if (!this.unlockTargetChapter) return;
+    
+    this.isPurchasing = true;
+    const chapterId = this.unlockTargetChapter.id;
+    
+    this.http.post(`${this.apiUrl}/novels/${this.novelId}/chapters/${chapterId}/unlock`, {}, { headers: this.getHeaders() })
+      .subscribe({
+        next: (res: any) => {
+          alert(`✅ ${res.message}`);
+          if (this.currentUser) {
+            this.currentUser.coin_balance = res.balance;
+          }
+          this.showUnlockConfirmModal = false;
+          this.isPurchasing = false;
+
+          this.chapters = this.chapters.map(ch => {
+            if (ch.id === chapterId) {
+              return { ...ch, isDisabled: false, needsPurchase: false };
+            }
+            return ch;
+          });
+          
+          this.doLoadChapter(chapterId);
+          this.cdr.detectChanges();
+        },
+        error: (err) => {
+          this.isPurchasing = false;
+          if (err.status === 409) {
+            alert('คุณปลดล็อคตอนนี้ไปแล้ว');
+            this.showUnlockConfirmModal = false;
+            this.loadAllData();
+          } else if (err.status === 402) {
+            alert(`❌ ${err.error?.error || 'เหรียญไม่พอ กรุณาเติมเงิน'}`);
+            this.router.navigate(['/topup']);
+          } else {
+            alert('เกิดข้อผิดพลาด กรุณาลองอีกครั้ง');
+          }
+        }
+      });
+  }
+
+  // ==================== COMMENT METHODS ====================
+  
+  // ✅ โหลดเฉพาะจำนวน comment (ไม่โหลด content)
+  async loadCommentCount() {
+    if (this.activeChapterId === 0) {
+      this.totalCommentsCount = 0;
+      console.log(`📊 Chapter ${this.activeChapterId} (intro): comments = 0`);
+      this.cdr.detectChanges(); // ✅ เพิ่มตรงนี้ด้วยเผื่อกรณีเป็นบทนำ
+      return;
+    }
+    
+    try {
+      const headers = this.getHeaders();
+      const res: any = await firstValueFrom(
+        this.http.get(`${this.apiUrl}/novels/${this.novelId}/chapters/${this.activeChapterId}/comments?page=1&limit=1`, { headers })
+      );
+      
+      // ✅ แก้ตรงนี้: res เป็น array เลย ไม่มี .comments หรือ .total
+      if (Array.isArray(res)) {
+        // backend ส่ง array มาโดยตรง
+        this.totalCommentsCount = res.length;
+      } else {
+        // backend ส่ง object ที่มี comments หรือ total
+        this.totalCommentsCount = res.total || res.comments?.length || 0;
+      }
+      
+      console.log(`📊 Chapter ${this.activeChapterId}: comments = ${this.totalCommentsCount}`);
+    } catch (err) {
+      console.error('Error loading comment count:', err);
+      this.totalCommentsCount = 0;
+    } finally {
+      // ✅ เพิ่มบรรทัดนี้ เพื่อบอกให้ Angular อัปเดตหน้าจอหลังจากได้ค่าใหม่แล้ว
+      this.cdr.detectChanges();
+    }
+  }
+  
+  async loadComments(reset: boolean = true) {
+    if (this.commentLoading) return;
+    if (this.activeChapterId === 0) return;
+    
+    if (reset) {
+      this.commentPage = 1;
+      this.commentHasMore = true;
+      this.comments = [];
+    }
+    
+    if (!this.commentHasMore) return;
+    
+    this.commentLoading = true;
+    const limit = 5; // ✅ ปรับค่า Limit ตรงนี้เป็น 5
+    
+    try {
+      const headers = this.getHeaders();
+      // ✅ แก้ไข URL ให้ส่ง limit=5 ไปยัง Backend
+      const res: any = await firstValueFrom(
+        this.http.get(`${this.apiUrl}/novels/${this.novelId}/chapters/${this.activeChapterId}/comments?page=${this.commentPage}&limit=${limit}`, { headers })
+      );
+      
+      let newComments = [];
+      let totalCount = 0;
+      
+      if (Array.isArray(res)) {
+        newComments = res;
+        totalCount = res.length; // กรณี Backend ส่งแค่ Array
+      } else {
+        newComments = res.comments || [];
+        totalCount = res.total || newComments.length;
+      }
+      
+      if (reset) {
+        this.comments = newComments;
+      } else {
+        this.comments = [...this.comments, ...newComments];
+      }
+      
+      // ✅ เช็คว่ายังมีต่อไหม: ถ้าจำนวนที่โหลดมาได้ "เท่ากับ" Limit ที่ตั้งไว้ แสดงว่าน่าจะมีหน้าถัดไป
+      this.commentHasMore = newComments.length === limit;
+      
+      if (this.commentHasMore) {
+        this.commentPage++; // เตรียมเลขหน้าไว้สำหรับกดโหลดครั้งถัดไป
+      }
+      
+      this.totalCommentsCount = totalCount;
+      
+    } catch (err) {
+      console.error('Error loading comments:', err);
+    } finally {
+      this.commentLoading = false;
+      this.cdr.detectChanges(); // ✅ มั่นใจว่า UI อัปเดตแน่นอน
+    }
+  }
+
+  loadMoreComments() {
+    if (!this.commentHasMore || this.commentLoading) return;
+    this.loadComments(false);
+  }
+
+  async submitComment() {
+    if (this.activeChapterId === 0) {
+      alert('ไม่สามารถแสดงความคิดเห็นในบทนำได้');
+      return;
+    }
+    
+    if (!this.currentUser) {
+      alert('กรุณาเข้าสู่ระบบเพื่อแสดงความคิดเห็น');
+      this.router.navigate(['/auth']);
+      return;
+    }
+    
+    if (!this.newComment.trim()) {
+      alert('กรุณากรอกข้อความ');
+      return;
+    }
+    
+    if (this.newComment.length > 1000) {
+      alert('ความคิดเห็นต้องไม่เกิน 1000 ตัวอักษร');
+      return;
+    }
+    
+    this.isSubmittingComment = true;
+    
+    try {
+      const res: any = await firstValueFrom(
+        this.http.post(
+          `${this.apiUrl}/novels/${this.novelId}/chapters/${this.activeChapterId}/comments`,
+          { comment: { content: this.newComment.trim() } },
+          { headers: this.getHeaders() }
+        )
+      );
+      
+      this.comments = [res.comment, ...this.comments];
+      this.totalCommentsCount = this.comments.length;
+      this.newComment = '';
+      this.showToast('💬 แสดงความคิดเห็นเรียบร้อยแล้ว');
+      
+    } catch (err: any) {
+      console.error('Error posting comment:', err);
+      alert(err.error?.errors?.[0] || 'เกิดข้อผิดพลาด กรุณาลองอีกครั้ง');
+    } finally {
+      this.isSubmittingComment = false;
+      this.cdr.detectChanges();
+    }
+  }
+
+  async deleteComment(commentId: number) {
+    if (!confirm('คุณต้องการลบความคิดเห็นนี้ใช่หรือไม่?')) return;
+    
+    try {
+      await firstValueFrom(
+        this.http.delete(
+          `${this.apiUrl}/novels/${this.novelId}/chapters/${this.activeChapterId}/comments/${commentId}`,
+          { headers: this.getHeaders() }
+        )
+      );
+      
+      // ✅ กรองคอมเมนต์ที่ถูกลบออกจาก Array
+      this.comments = this.comments.filter(c => c.id !== commentId);
+      
+      // ✅ แก้ไข Logic: ให้ลดจำนวนทั้งหมดลง 1 แทนการนับจาก length ของ array ที่อาจจะยังโหลดมาไม่หมด
+      if (this.totalCommentsCount > 0) {
+        this.totalCommentsCount--;
+      }
+      
+      this.showToast('🗑️ ลบความคิดเห็นเรียบร้อยแล้ว');
+      
+    } catch (err: any) {
+      console.error('Error deleting comment:', err);
+      alert(err.error?.error || 'เกิดข้อผิดพลาด กรุณาลองอีกครั้ง');
+    } finally {
+      // ✅ เพิ่มบรรทัดนี้ เพื่อบอกให้ Angular อัปเดตหน้าจอทันทีหลังจากลบเสร็จ
+      this.cdr.detectChanges();
+    }
+  }
+
+  toggleCommentSection() {
+    this.showCommentSection = !this.showCommentSection;
+    if (this.showCommentSection && this.comments.length === 0) {
+      this.loadComments(true);
+    }
   }
 }

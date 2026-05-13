@@ -45,17 +45,17 @@
           </div>
 
           <div class="px-4 py-2 bg-gradient-to-r from-[#5C469C]/30 to-[#1D267D] border-b border-[#5C469C]/30">
-              <div class="flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                  <span class="text-lg">🪙</span>
-                  <span class="text-xs text-[#9B8CC4]">เหรียญของฉัน</span>
-                </div>
-                <div class="flex items-center gap-2">
-                  <span class="text-lg font-bold text-[#D4ADFC]">{{ formatNumber(currentUser?.coin_balance || 0) }}</span>
-                  <button (click)="goToTopup()" class="text-xs bg-[#D4ADFC] text-[#0C134F] px-2 py-0.5 rounded-full hover:bg-[#B085E8] transition-colors">+ เติม</button>
-                </div>
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-lg">🪙</span>
+                <span class="text-xs text-[#9B8CC4]">เหรียญของฉัน</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-lg font-bold text-[#D4ADFC]">{{ formatNumber(currentUser?.coin_balance || 0) }}</span>
+                <button (click)="goToTopup()" class="text-xs bg-[#D4ADFC] text-[#0C134F] px-2 py-0.5 rounded-full hover:bg-[#B085E8] transition-colors">+ เติม</button>
               </div>
             </div>
+          </div>
 
           <div class="py-1.5">
             <div (click)="navigateTo('/writer')" class="flex items-center gap-3 px-4 py-2.5 text-sm text-[#C8BEE8] hover:bg-[#5C469C]/30 hover:text-white transition-colors cursor-pointer">
@@ -201,26 +201,140 @@
           </button>
         </div>
       </div>
+
+      <!-- ✅ ส่วนแสดงความคิดเห็น - ซ่อนเมื่อเป็นบทนำ -->
+      <div *ngIf="activeChapterId !== 0" class="mt-8 border-t border-[#5C469C]/25 pt-6">
+        
+        <!-- ปุ่มแสดง/ซ่อนความคิดเห็น -->
+        <button 
+          (click)="toggleCommentSection()"
+          class="flex items-center gap-2 text-sm text-[#D4ADFC] hover:text-white transition-colors mb-4 group w-full justify-between">
+          <div class="flex items-center gap-2">
+            <span class="text-xl group-hover:scale-110 transition-transform">💬</span>
+            <span>ความคิดเห็น ({{ totalCommentsCount }})</span>
+          </div>
+          <span class="text-[#7B6FA0] text-xs">{{ showCommentSection ? '▲ ซ่อน' : '▼ แสดง' }}</span>
+        </button>
+        
+        <!-- ส่วนความคิดเห็น (แสดงเมื่อกดปุ่ม) -->
+        <div *ngIf="showCommentSection" class="space-y-5">
+          
+          <!-- ฟอร์มเพิ่มความคิดเห็น (ต้องล็อกอิน) -->
+          <div class="rounded-xl border border-[#5C469C]/30 bg-[#1D267D]/40 p-4">
+            <div class="flex gap-3">
+              <!-- Avatar -->
+              <div class="w-9 h-9 rounded-full overflow-hidden bg-[#5C469C] flex items-center justify-center text-white text-sm shrink-0">
+                <img *ngIf="currentUser?.avatar_path" [src]="currentUser.avatar_path" class="w-full h-full object-cover">
+                <span *ngIf="!currentUser?.avatar_path">{{ currentUser?.username?.[0] || 'น' }}</span>
+              </div>
+              
+              <!-- Input Area -->
+              <div class="flex-1">
+                <textarea 
+                  [(ngModel)]="newComment"
+                  [disabled]="!currentUser"
+                  [placeholder]="currentUser ? 'แสดงความคิดเห็นของคุณ...' : 'กรุณาเข้าสู่ระบบเพื่อแสดงความคิดเห็น'"
+                  rows="3"
+                  class="w-full rounded-xl border border-[#5C469C]/40 bg-[#0C134F]/80 px-4 py-3 text-sm text-white placeholder-[#7B6FA0] focus:border-[#D4ADFC] focus:outline-none resize-none"
+                  (keydown.ctrl.enter)="submitComment()"
+                ></textarea>
+                
+                <div class="flex justify-between items-center mt-2">
+                  <span class="text-[10px] text-[#7B6FA0]">{{ newComment.length }}/1000</span>
+                  <button 
+                    (click)="submitComment()"
+                    [disabled]="!currentUser || !newComment.trim() || isSubmittingComment"
+                    class="rounded-lg bg-gradient-to-r from-[#D4ADFC] to-[#B085E8] px-5 py-2 text-xs font-semibold text-[#0C134F] hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                    {{ isSubmittingComment ? 'กำลังส่ง...' : 'ส่งความคิดเห็น' }}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- รายการความคิดเห็น -->
+          <div *ngIf="comments.length === 0 && !commentLoading" class="text-center py-8">
+            <div class="text-5xl mb-3 opacity-50">💭</div>
+            <p class="text-[#7B6FA0] text-sm">ยังไม่มีความคิดเห็น</p>
+            <p class="text-xs text-[#5C469C]">มาเป็นคนแรกที่แสดงความคิดเห็นกันเถอะ!</p>
+          </div>
+          
+          <div *ngIf="commentLoading && comments.length === 0" class="text-center py-8">
+            <div class="inline-block animate-spin rounded-full h-8 w-8 border-2 border-[#D4ADFC] border-t-transparent"></div>
+            <p class="text-[#7B6FA0] text-xs mt-2">กำลังโหลดความคิดเห็น...</p>
+          </div>
+          
+          <!-- รายการ comments -->
+          <div class="space-y-4">
+            <div *ngFor="let comment of comments" 
+                class="rounded-xl border border-[#5C469C]/20 bg-[#1D267D]/30 p-4 transition-all hover:border-[#5C469C]/40">
+              
+              <div class="flex gap-3">
+                <!-- User Avatar -->
+                <div class="w-8 h-8 rounded-full overflow-hidden bg-[#5C469C] flex items-center justify-center text-white text-xs shrink-0">
+                  <img *ngIf="comment.user?.avatar_path" [src]="comment.user.avatar_path" class="w-full h-full object-cover">
+                  <span *ngIf="!comment.user?.avatar_path">{{ comment.user?.username?.[0] || 'น' }}</span>
+                </div>
+                
+                <!-- Comment Content -->
+                <div class="flex-1">
+                  <div class="flex items-center flex-wrap gap-2 mb-1">
+                    <span class="text-sm font-medium text-white">{{ comment.user?.username || 'ผู้ใช้' }}</span>
+                    <span class="text-[10px] text-[#7B6FA0]">•</span>
+                    <span class="text-[10px] text-[#7B6FA0]">{{ formatCommentDate(comment.created_at) }}</span>
+                    
+                    <!-- ปุ่มลบ (เฉพาะเจ้าของคอมเมนต์ หรือ เจ้าของนิยาย หรือ Admin) -->
+                    <button 
+                      *ngIf="currentUser && (currentUser.id === comment.user?.id || currentUser.id === novelAuthorId || currentUser.role === 'admin')"
+                      (click)="deleteComment(comment.id)"
+                      class="ml-auto text-[10px] text-red-400/70 hover:text-red-400 transition-colors"
+                      title="ลบความคิดเห็น">
+                      🗑️
+                    </button>
+                  </div>
+                  <p class="text-sm text-[#D4ADFC]/85 leading-relaxed break-words whitespace-pre-wrap">
+                    {{ comment.content }}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- ปุ่ม Load More -->
+          <div *ngIf="commentHasMore && comments.length > 0" class="text-center pt-2 pb-4">
+            <button 
+              (click)="loadMoreComments()"
+              [disabled]="commentLoading"
+              class="text-xs text-[#7B6FA0] hover:text-[#D4ADFC] transition-colors px-4 py-2 rounded-full border border-[#5C469C]/30 hover:border-[#D4ADFC]/30">
+              {{ commentLoading ? 'กำลังโหลด...' : '📖 โหลดความคิดเห็นเพิ่มเติม' }}
+            </button>
+          </div>
+          
+        </div>
+      </div>
+      
+      <!-- ✅ แสดงข้อความเมื่อเป็นบทนำ -->
+      <div *ngIf="activeChapterId === 0" class="mt-8 border-t border-[#5C469C]/25 pt-6 text-center py-4">
+        <p class="text-[#7B6FA0] text-sm">📖 บทนำเป็นส่วนเกริ่นนำของเรื่อง ไม่สามารถแสดงความคิดเห็นได้</p>
+        <p class="text-xs text-[#5C469C] mt-1">สามารถแสดงความคิดเห็นได้ในตอนต่างๆ ของนิยาย</p>
+      </div>
+      
     </article>
 
     <aside class="sticky top-[72px] self-start pl-4 space-y-4">
       <div class="rounded-2xl border border-[#5C469C]/30 bg-[#1D267D]/45 p-4">
         <div class="mb-3 text-[11px] font-bold uppercase tracking-widest text-[#7B6FA0]">เกี่ยวกับนิยาย</div>
         
-        <!-- ✅ ปกนิยาย รองรับทั้งรูปและอีโมจิ -->
         <div class="mb-3">
-          <!-- ถ้าเป็น URL รูป -->
           <img *ngIf="coverPath && (coverPath.includes('http') || coverPath.includes('/'))" 
                [src]="coverPath" 
                class="w-full rounded-xl object-cover" />
           
-          <!-- ถ้าเป็น Emoji -->
           <div *ngIf="coverPath && !coverPath.includes('http') && !coverPath.includes('/') && coverPath.length <= 5" 
                class="w-full h-48 rounded-xl bg-gradient-to-br from-[#5C469C] to-[#1D267D] flex items-center justify-center text-8xl">
             {{coverPath}}
           </div>
           
-          <!-- default ถ้าไม่มีปก -->
           <div *ngIf="!coverPath" 
                class="w-full h-48 rounded-xl bg-gradient-to-br from-[#5C469C] to-[#1D267D] flex items-center justify-center text-8xl">
             📖
@@ -258,6 +372,7 @@
 
   </div>
 
+  <!-- Modal Unlock Chapter -->
   <div *ngIf="showUnlockConfirmModal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm">
     <div class="w-full max-w-md rounded-2xl bg-[#1D267D] border border-[#5C469C] p-6 shadow-2xl transform transition-all mx-4">
       <div class="text-center">
@@ -277,7 +392,7 @@
         </p>
 
         <div *ngIf="unlockTargetChapter?.isEarlyAccess && unlockTargetChapter?.freeDate" class="text-[11px] text-green-400 bg-green-500/10 py-1.5 px-3 rounded-lg inline-block mb-4">
-           ตอนที่จะปลดล็อคให้อ่านฟรีในวันที่ {{ unlockTargetChapter?.freeDate | date:'dd/MM/yyyy HH:mm' }}
+          ⏰ ตอนที่จะปลดล็อคให้อ่านฟรีในวันที่ {{ unlockTargetChapter?.freeDate | date:'dd/MM/yyyy HH:mm' }}
         </div>
         <div *ngIf="!unlockTargetChapter?.isEarlyAccess" class="mb-4"></div>
         
@@ -317,6 +432,7 @@
     </div>
   </div>
 
+  <!-- Modal Purchase Novel -->
   <div *ngIf="showPurchaseNovelConfirm" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm">
     <div class="w-full max-w-md rounded-2xl bg-[#1D267D] border border-[#5C469C] p-6 shadow-2xl transform transition-all mx-4">
       <div class="text-center">
