@@ -16,127 +16,239 @@
         <span class="text-[#D4ADFC] font-semibold">My Novels</span>
       </div>
       <p class="text-[#7B6FA0] text-sm mt-2">
-        {{ isLogin ? 'ยินดีต้อนรับกลับมา' : 'เริ่มต้นการผจญภัยของคุณ' }}
+        {{ showForgotPassword ? 'รีเซ็ตรหัสผ่าน' : (isLogin ? 'ยินดีต้อนรับกลับมา' : 'เริ่มต้นการผจญภัยของคุณ') }}
       </p>
     </div>
 
     <!-- CARD -->
     <div class="bg-[#1D267D]/60 border border-[#5C469C]/40 rounded-3xl p-8 shadow-2xl shadow-black/40 backdrop-blur">
 
-      <!-- TAB TOGGLE -->
-      <div class="flex bg-[#0C134F]/60 rounded-2xl p-1 mb-8">
-        <button
-          (click)="setMode(true)"
-          [class]="isLogin
-            ? 'flex-1 py-2.5 text-sm font-semibold text-white bg-[#5C469C] rounded-xl transition-all duration-200 shadow'
-            : 'flex-1 py-2.5 text-sm text-[#7B6FA0] hover:text-[#D4ADFC] transition-colors duration-200'">
-          เข้าสู่ระบบ
-        </button>
-        <button
-          (click)="setMode(false)"
-          [class]="!isLogin
-            ? 'flex-1 py-2.5 text-sm font-semibold text-white bg-[#5C469C] rounded-xl transition-all duration-200 shadow'
-            : 'flex-1 py-2.5 text-sm text-[#7B6FA0] hover:text-[#D4ADFC] transition-colors duration-200'">
-          สมัครสมาชิก
-        </button>
+      <!-- Forgot Password Mode -->
+      <div *ngIf="showForgotPassword">
+        
+        <!-- Step 1: Request OTP -->
+        <div *ngIf="!otpSent" class="space-y-4">
+          <p class="text-[#9B8CC4] text-sm text-center mb-4">กรุณากรอกอีเมลที่ใช้สมัครสมาชิก เพื่อรับรหัส OTP</p>
+          
+          <div class="space-y-1.5">
+            <label class="text-xs font-semibold text-[#9B8CC4] tracking-wide uppercase">อีเมล</label>
+            <div class="relative">
+              <span class="absolute left-4 top-1/2 -translate-y-1/2 text-[#5C469C]">✉️</span>
+              <input
+                [(ngModel)]="forgotEmail"
+                type="email"
+                placeholder="your@email.com"
+                class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-xl pl-11 pr-4 py-3 text-white text-sm placeholder-[#7B6FA0] outline-none focus:border-[#D4ADFC] focus:bg-[#0C134F]/80 transition-all duration-200"
+              />
+            </div>
+          </div>
+
+          <div *ngIf="errorMsg" class="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-red-300 text-sm">
+            ⚠️ {{ errorMsg }}
+          </div>
+
+          <button
+            (click)="requestOTP()"
+            [disabled]="loading"
+            class="w-full bg-[#D4ADFC] text-[#0C134F] font-bold text-sm py-3.5 rounded-xl hover:bg-[#B085E8] active:scale-[0.98] transition-all duration-200 mt-2 disabled:opacity-60 disabled:cursor-not-allowed">
+            <span *ngIf="!loading">ส่งรหัส OTP →</span>
+            <span *ngIf="loading">⏳ กำลังส่ง...</span>
+          </button>
+        </div>
+
+        <!-- Step 2: Enter OTP and New Password -->
+        <div *ngIf="otpSent" class="space-y-4">
+          <p class="text-[#9B8CC4] text-sm text-center mb-4">กรอกรหัส OTP ที่ส่งไปยังอีเมล <span class="text-[#D4ADFC]">{{ forgotEmail }}</span></p>
+          
+          <div class="space-y-1.5">
+            <label class="text-xs font-semibold text-[#9B8CC4] tracking-wide uppercase">รหัส OTP</label>
+            <div class="relative">
+              <span class="absolute left-4 top-1/2 -translate-y-1/2 text-[#5C469C]">🔐</span>
+              <input
+                [(ngModel)]="otpCode"
+                type="text"
+                maxlength="6"
+                placeholder="123456"
+                class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-xl pl-11 pr-4 py-3 text-white text-sm placeholder-[#7B6FA0] outline-none focus:border-[#D4ADFC] focus:bg-[#0C134F]/80 transition-all duration-200"
+              />
+            </div>
+          </div>
+
+          <div class="space-y-1.5">
+            <label class="text-xs font-semibold text-[#9B8CC4] tracking-wide uppercase">รหัสผ่านใหม่</label>
+            <div class="relative">
+              <span class="absolute left-4 top-1/2 -translate-y-1/2 text-[#5C469C]">🔒</span>
+              <input
+                [(ngModel)]="newPassword"
+                [type]="showNewPassword ? 'text' : 'password'"
+                placeholder="••••••••"
+                class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-xl pl-11 pr-12 py-3 text-white text-sm placeholder-[#7B6FA0] outline-none focus:border-[#D4ADFC] focus:bg-[#0C134F]/80 transition-all duration-200"
+              />
+              <button type="button" (click)="showNewPassword = !showNewPassword"
+                class="absolute right-4 top-1/2 -translate-y-1/2 text-[#7B6FA0] hover:text-[#D4ADFC] transition-colors text-sm">
+                {{ showNewPassword ? '🙈' : '👁️' }}
+              </button>
+            </div>
+          </div>
+
+          <div class="space-y-1.5">
+            <label class="text-xs font-semibold text-[#9B8CC4] tracking-wide uppercase">ยืนยันรหัสผ่านใหม่</label>
+            <div class="relative">
+              <span class="absolute left-4 top-1/2 -translate-y-1/2 text-[#5C469C]">🔒</span>
+              <input
+                [(ngModel)]="confirmNewPassword"
+                [type]="showConfirmPassword ? 'text' : 'password'"
+                placeholder="••••••••"
+                class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-xl pl-11 pr-12 py-3 text-white text-sm placeholder-[#7B6FA0] outline-none focus:border-[#D4ADFC] focus:bg-[#0C134F]/80 transition-all duration-200"
+              />
+              <button type="button" (click)="showConfirmPassword = !showConfirmPassword"
+                class="absolute right-4 top-1/2 -translate-y-1/2 text-[#7B6FA0] hover:text-[#D4ADFC] transition-colors text-sm">
+                {{ showConfirmPassword ? '🙈' : '👁️' }}
+              </button>
+            </div>
+          </div>
+
+          <div *ngIf="errorMsg" class="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-red-300 text-sm">
+            ⚠️ {{ errorMsg }}
+          </div>
+
+          <button
+            (click)="resetPassword()"
+            [disabled]="loading"
+            class="w-full bg-[#D4ADFC] text-[#0C134F] font-bold text-sm py-3.5 rounded-xl hover:bg-[#B085E8] active:scale-[0.98] transition-all duration-200 mt-2 disabled:opacity-60 disabled:cursor-not-allowed">
+            <span *ngIf="!loading">รีเซ็ตรหัสผ่าน →</span>
+            <span *ngIf="loading">⏳ กำลังดำเนินการ...</span>
+          </button>
+        </div>
+
+        <!-- Back to Login -->
+        <div class="text-center mt-6">
+          <button (click)="cancelForgotPassword()" class="text-xs text-[#7B6FA0] hover:text-[#D4ADFC] transition-colors">
+            ← กลับไปหน้าเข้าสู่ระบบ
+          </button>
+        </div>
       </div>
 
-      <!-- FORM -->
-      <form (ngSubmit)="onSubmit()" class="space-y-4">
-        <!-- NAME (sign up only) -->
-        <div *ngIf="!isLogin" class="space-y-1.5">
-          <label class="text-xs font-semibold text-[#9B8CC4] tracking-wide uppercase">ชื่อผู้ใช้</label>
-          <div class="relative">
-            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-[#5C469C]">👤</span>
-            <input
-              [(ngModel)]="form.username" name="username"
-              type="text"
-              placeholder="ชื่อที่ใช้แสดงผล"
-              class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-xl pl-11 pr-4 py-3 text-white text-sm placeholder-[#7B6FA0] outline-none focus:border-[#D4ADFC] focus:bg-[#0C134F]/80 transition-all duration-200"
-            />
-          </div>
+      <!-- Normal Login/Signup Mode -->
+      <div *ngIf="!showForgotPassword">
+        
+        <!-- TAB TOGGLE -->
+        <div class="flex bg-[#0C134F]/60 rounded-2xl p-1 mb-8">
+          <button
+            (click)="setMode(true)"
+            [class]="isLogin
+              ? 'flex-1 py-2.5 text-sm font-semibold text-white bg-[#5C469C] rounded-xl transition-all duration-200 shadow'
+              : 'flex-1 py-2.5 text-sm text-[#7B6FA0] hover:text-[#D4ADFC] transition-colors duration-200'">
+            เข้าสู่ระบบ
+          </button>
+          <button
+            (click)="setMode(false)"
+            [class]="!isLogin
+              ? 'flex-1 py-2.5 text-sm font-semibold text-white bg-[#5C469C] rounded-xl transition-all duration-200 shadow'
+              : 'flex-1 py-2.5 text-sm text-[#7B6FA0] hover:text-[#D4ADFC] transition-colors duration-200'">
+            สมัครสมาชิก
+          </button>
         </div>
 
-        <!-- EMAIL -->
-        <div class="space-y-1.5">
-          <label class="text-xs font-semibold text-[#9B8CC4] tracking-wide uppercase">อีเมล</label>
-          <div class="relative">
-            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-[#5C469C]">✉️</span>
-            <input
-              [(ngModel)]="form.email" name="email" autocomplete="username"
-              type="email"
-              placeholder="your@email.com"
-              class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-xl pl-11 pr-4 py-3 text-white text-sm placeholder-[#7B6FA0] outline-none focus:border-[#D4ADFC] focus:bg-[#0C134F]/80 transition-all duration-200"
-            />
+        <!-- FORM -->
+        <form (ngSubmit)="onSubmit()" class="space-y-4">
+          <!-- NAME (sign up only) -->
+          <div *ngIf="!isLogin" class="space-y-1.5">
+            <label class="text-xs font-semibold text-[#9B8CC4] tracking-wide uppercase">ชื่อผู้ใช้</label>
+            <div class="relative">
+              <span class="absolute left-4 top-1/2 -translate-y-1/2 text-[#5C469C]">👤</span>
+              <input
+                [(ngModel)]="form.username" name="username"
+                type="text"
+                placeholder="ชื่อที่ใช้แสดงผล"
+                class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-xl pl-11 pr-4 py-3 text-white text-sm placeholder-[#7B6FA0] outline-none focus:border-[#D4ADFC] focus:bg-[#0C134F]/80 transition-all duration-200"
+              />
+            </div>
           </div>
+
+          <!-- EMAIL -->
+          <div class="space-y-1.5">
+            <label class="text-xs font-semibold text-[#9B8CC4] tracking-wide uppercase">อีเมล</label>
+            <div class="relative">
+              <span class="absolute left-4 top-1/2 -translate-y-1/2 text-[#5C469C]">✉️</span>
+              <input
+                [(ngModel)]="form.email" name="email" autocomplete="username"
+                type="email"
+                placeholder="your@email.com"
+                class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-xl pl-11 pr-4 py-3 text-white text-sm placeholder-[#7B6FA0] outline-none focus:border-[#D4ADFC] focus:bg-[#0C134F]/80 transition-all duration-200"
+              />
+            </div>
+          </div>
+
+          <!-- PASSWORD -->
+          <div class="space-y-1.5">
+            <div class="flex justify-between items-center">
+              <label class="text-xs font-semibold text-[#9B8CC4] tracking-wide uppercase">รหัสผ่าน</label>
+              <button *ngIf="isLogin" type="button" (click)="openForgotPassword()" class="text-xs text-[#D4ADFC] hover:text-[#B085E8] transition-colors">
+                ลืมรหัสผ่าน?
+              </button>
+            </div>
+            <div class="relative">
+              <span class="absolute left-4 top-1/2 -translate-y-1/2 text-[#5C469C]">🔒</span>
+              <input
+                [(ngModel)]="form.password" name="password" autocomplete="current-password"
+                [type]="showPassword ? 'text' : 'password'"
+                placeholder="••••••••"
+                class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-xl pl-11 pr-12 py-3 text-white text-sm placeholder-[#7B6FA0] outline-none focus:border-[#D4ADFC] focus:bg-[#0C134F]/80 transition-all duration-200"
+              />
+              <button type="button" (click)="showPassword = !showPassword"
+                class="absolute right-4 top-1/2 -translate-y-1/2 text-[#7B6FA0] hover:text-[#D4ADFC] transition-colors text-sm">
+                {{ showPassword ? '🙈' : '👁️' }}
+              </button>
+            </div>
+          </div>
+
+          <!-- CONFIRM PASSWORD (sign up only) -->
+          <div *ngIf="!isLogin" class="space-y-1.5">
+            <label class="text-xs font-semibold text-[#9B8CC4] tracking-wide uppercase">ยืนยันรหัสผ่าน</label>
+            <div class="relative">
+              <span class="absolute left-4 top-1/2 -translate-y-1/2 text-[#5C469C]">🔒</span>
+              <input
+                [(ngModel)]="form.confirmPassword" name="confirm-password" autocomplete="new-password"
+                [type]="showPassword ? 'text' : 'password'"
+                placeholder="••••••••"
+                class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-xl pl-11 pr-4 py-3 text-white text-sm placeholder-[#7B6FA0] outline-none focus:border-[#D4ADFC] focus:bg-[#0C134F]/80 transition-all duration-200"
+              />
+            </div>
+          </div>
+
+          <!-- ERROR MESSAGE -->
+          <div *ngIf="errorMsg" class="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-red-300 text-sm">
+            ⚠️ {{ errorMsg }}
+          </div>
+
+          <!-- SUBMIT -->
+          <button
+            type="submit"
+            [disabled]="loading"
+            class="w-full bg-[#D4ADFC] text-[#0C134F] font-bold text-sm py-3.5 rounded-xl hover:bg-[#B085E8] active:scale-[0.98] transition-all duration-200 mt-2 disabled:opacity-60 disabled:cursor-not-allowed">
+            <span *ngIf="!loading">{{ isLogin ? 'เข้าสู่ระบบ →' : 'สมัครสมาชิก →' }}</span>
+            <span *ngIf="loading">⏳ กำลังดำเนินการ...</span>
+          </button>
+
+        </form>
+
+        <!-- DIVIDER -->
+        <div class="flex items-center gap-3 my-6">
+          <div class="flex-1 h-px bg-[#5C469C]/30"></div>
+          <span class="text-xs text-[#7B6FA0]">หรือ</span>
+          <div class="flex-1 h-px bg-[#5C469C]/30"></div>
         </div>
 
-        <!-- PASSWORD -->
-        <div class="space-y-1.5">
-          <div class="flex justify-between items-center">
-            <label class="text-xs font-semibold text-[#9B8CC4] tracking-wide uppercase">รหัสผ่าน</label>
-            <a *ngIf="isLogin" href="#" class="text-xs text-[#D4ADFC] hover:text-[#B085E8] transition-colors">ลืมรหัสผ่าน?</a>
-          </div>
-          <div class="relative">
-            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-[#5C469C]">🔒</span>
-            <input
-              [(ngModel)]="form.password" name="password" autocomplete="current-password"
-              [type]="showPassword ? 'text' : 'password'"
-              placeholder="••••••••"
-              class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-xl pl-11 pr-12 py-3 text-white text-sm placeholder-[#7B6FA0] outline-none focus:border-[#D4ADFC] focus:bg-[#0C134F]/80 transition-all duration-200"
-            />
-            <button type="button" (click)="showPassword = !showPassword"
-              class="absolute right-4 top-1/2 -translate-y-1/2 text-[#7B6FA0] hover:text-[#D4ADFC] transition-colors text-sm">
-              {{ showPassword ? '🙈' : '👁️' }}
-            </button>
-          </div>
-        </div>
+        <!-- SOCIAL LOGIN -->
+        <div *ngIf="!showForgotPassword" #googleButton class="w-full"></div>
 
-        <!-- CONFIRM PASSWORD (sign up only) -->
-        <div *ngIf="!isLogin" class="space-y-1.5">
-          <label class="text-xs font-semibold text-[#9B8CC4] tracking-wide uppercase">ยืนยันรหัสผ่าน</label>
-          <div class="relative">
-            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-[#5C469C]">🔒</span>
-            <input
-              [(ngModel)]="form.confirmPassword" name="confirm-password" autocomplete="new-password"
-              [type]="showPassword ? 'text' : 'password'"
-              placeholder="••••••••"
-              class="w-full bg-[#0C134F]/60 border border-[#5C469C]/50 rounded-xl pl-11 pr-4 py-3 text-white text-sm placeholder-[#7B6FA0] outline-none focus:border-[#D4ADFC] focus:bg-[#0C134F]/80 transition-all duration-200"
-            />
-          </div>
-        </div>
-
-        <!-- ERROR MESSAGE -->
-        <div *ngIf="errorMsg"
-          class="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-red-300 text-sm">
-          ⚠️ {{ errorMsg }}
-        </div>
-
-        <!-- SUBMIT -->
-        <button
-          type="submit"
-          [disabled]="loading"
-          class="w-full bg-[#D4ADFC] text-[#0C134F] font-bold text-sm py-3.5 rounded-xl hover:bg-[#B085E8] active:scale-[0.98] transition-all duration-200 mt-2 disabled:opacity-60 disabled:cursor-not-allowed">
-          <span *ngIf="!loading">{{ isLogin ? 'เข้าสู่ระบบ →' : 'สมัครสมาชิก →' }}</span>
-          <span *ngIf="loading">⏳ กำลังดำเนินการ...</span>
-        </button>
-
-      </form>
-
-      <!-- DIVIDER -->
-      <div class="flex items-center gap-3 my-6">
-        <div class="flex-1 h-px bg-[#5C469C]/30"></div>
-        <span class="text-xs text-[#7B6FA0]">หรือ</span>
-        <div class="flex-1 h-px bg-[#5C469C]/30"></div>
       </div>
-
-      <!-- SOCIAL LOGIN -->
-      <div #googleButton class="w-full"></div>
 
     </div>
 
     <!-- FOOTER NOTE -->
-    <p class="text-center text-xs text-[#7B6FA0] mt-6">
+    <p *ngIf="!showForgotPassword" class="text-center text-xs text-[#7B6FA0] mt-6">
       {{ isLogin ? 'ยังไม่มีบัญชี?' : 'มีบัญชีอยู่แล้ว?' }}
       <button (click)="setMode(!isLogin)" class="text-[#D4ADFC] hover:text-[#B085E8] ml-1 transition-colors">
         {{ isLogin ? 'สมัครสมาชิก' : 'เข้าสู่ระบบ' }}

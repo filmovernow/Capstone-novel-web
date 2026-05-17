@@ -20,6 +20,16 @@ export class AuthComponent implements OnInit, AfterViewInit {
   loading = false;
   errorMsg = '';
 
+  // Forgot password
+  showForgotPassword = false;
+  forgotEmail = '';
+  otpSent = false;
+  otpCode = '';
+  newPassword = '';
+  confirmNewPassword = '';
+  showNewPassword = false;
+  showConfirmPassword = false;
+
   form = {
     username: '',
     email: '',
@@ -38,8 +48,11 @@ export class AuthComponent implements OnInit, AfterViewInit {
   ngOnInit() {}
 
   ngAfterViewInit() {
-    // init Google button after view loads
-    if (this.googleButtonRef) {
+    this.initGoogleButton();
+  }
+
+  initGoogleButton() {
+    if (this.googleButtonRef && this.googleButtonRef.nativeElement) {
       this.googleAuth.initGoogleSignIn(this.googleButtonRef.nativeElement);
     }
   }
@@ -48,14 +61,122 @@ export class AuthComponent implements OnInit, AfterViewInit {
     this.isLogin = login;
     this.errorMsg = '';
     this.form = { username: '', email: '', password: '', confirmPassword: '' };
+    
+    // ✅ รีโหลด Google button เมื่อเปลี่ยน mode
+    setTimeout(() => {
+      this.initGoogleButton();
+    }, 100);
   }
 
   goHome() {
-  this.router.navigate(['/']);
+    this.router.navigate(['/']);
+  }
+
+  openForgotPassword() {
+    this.showForgotPassword = true;
+    this.otpSent = false;
+    this.forgotEmail = '';
+    this.otpCode = '';
+    this.newPassword = '';
+    this.confirmNewPassword = '';
+    this.errorMsg = '';
+  }
+
+  cancelForgotPassword() {
+    this.showForgotPassword = false;
+    this.otpSent = false;
+    this.forgotEmail = '';
+    this.otpCode = '';
+    this.newPassword = '';
+    this.confirmNewPassword = '';
+    this.errorMsg = '';
+    
+    // ✅ ✅ ✅ สำคัญ: โหลด Google button ใหม่เมื่อกลับมา
+    setTimeout(() => {
+      this.initGoogleButton();
+    }, 200);
+  }
+
+  requestOTP() {
+    this.errorMsg = '';
+
+    if (!this.forgotEmail) {
+      this.errorMsg = 'กรุณากรอกอีเมล';
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(this.forgotEmail)) {
+      this.errorMsg = 'กรุณากรอกรูปแบบอีเมลให้ถูกต้อง';
+      return;
+    }
+
+    this.loading = true;
+    this.cdr.detectChanges();
+
+    this.http.post('http://localhost:3000/api/v1/forgot_password', {
+      email: this.forgotEmail.toLowerCase()
+    }).subscribe({
+      next: () => {
+        this.loading = false;
+        this.otpSent = true;
+        this.errorMsg = '';
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        this.loading = false;
+        this.errorMsg = err.error?.message || 'เกิดข้อผิดพลาด กรุณาลองอีกครั้ง';
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  resetPassword() {
+    this.errorMsg = '';
+
+    if (!this.otpCode || this.otpCode.length !== 6) {
+      this.errorMsg = 'กรุณากรอกรหัส OTP 6 หลัก';
+      return;
+    }
+
+    if (!this.newPassword) {
+      this.errorMsg = 'กรุณากรอกรหัสผ่านใหม่';
+      return;
+    }
+
+    if (this.newPassword.length < 6) {
+      this.errorMsg = 'รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร';
+      return;
+    }
+
+    if (this.newPassword !== this.confirmNewPassword) {
+      this.errorMsg = 'รหัสผ่านใหม่และการยืนยันไม่ตรงกัน';
+      return;
+    }
+
+    this.loading = true;
+    this.cdr.detectChanges();
+
+    this.http.post('http://localhost:3000/api/v1/reset_password', {
+      email: this.forgotEmail.toLowerCase(),
+      token: this.otpCode,
+      password: this.newPassword
+    }).subscribe({
+      next: () => {
+        this.loading = false;
+        alert('เปลี่ยนรหัสผ่านสำเร็จ! กรุณาเข้าสู่ระบบด้วยรหัสผ่านใหม่');
+        this.cancelForgotPassword();
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        this.loading = false;
+        this.errorMsg = err.error?.error || 'รหัส OTP ไม่ถูกต้องหรือหมดอายุแล้ว';
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   onSubmit() {
-    // ... โค้ด onSubmit เหมือนเดิม
     this.errorMsg = '';
 
     if (!this.form.email || !this.form.password) {
@@ -78,6 +199,10 @@ export class AuthComponent implements OnInit, AfterViewInit {
         this.errorMsg = 'รหัสผ่านไม่ตรงกัน';
         return;
       }
+      if (this.form.password.length < 6) {
+        this.errorMsg = 'รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร';
+        return;
+      }
     }
 
     this.loading = true;
@@ -97,7 +222,7 @@ export class AuthComponent implements OnInit, AfterViewInit {
           this.router.navigate(['/']);
         },
         error: (err) => {
-          this.errorMsg = err.error?.message || 'Login failed';
+          this.errorMsg = err.error?.message || 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
           this.loading = false;
           this.cdr.detectChanges();
         }
@@ -133,7 +258,7 @@ export class AuthComponent implements OnInit, AfterViewInit {
             if (Array.isArray(err.error?.errors)) {
               this.errorMsg = err.error.errors.map((e: string) => errorMap[e] || e).join(', ');
             } else {
-              this.errorMsg = err.error?.message || 'Signup failed';
+              this.errorMsg = err.error?.message || 'สมัครสมาชิกไม่สำเร็จ';
             }
           } catch (e) {
             this.errorMsg = 'เกิดข้อผิดพลาด หรืออีเมลนี้ถูกใช้งานแล้ว';
