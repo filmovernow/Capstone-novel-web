@@ -41,14 +41,14 @@ export class TopupComponent implements OnInit {
 
   onAmountChange() {
     this.errorMessage = '';
-    if (this.amount && this.amount < 10) {
-      this.errorMessage = 'ขั้นต่ำ 10 บาท';
+    if (this.amount && this.amount < 20) {
+      this.errorMessage = 'ยอดเติมขั้นต่ำ 20 บาท';
     }
     this.cdr.detectChanges();
   }
 
   getCoins(): number {
-    if (this.amount && this.amount >= 10) {
+    if (this.amount && this.amount >= 20) {
       return this.amount;
     }
     return 0;
@@ -78,8 +78,8 @@ export class TopupComponent implements OnInit {
   async processPayment() {
     const totalAmount = this.amount;
     
-    if (!totalAmount || totalAmount < 10) {
-      this.errorMessage = 'กรุณากรอกจำนวนเงินที่ต้องการเติม (ขั้นต่ำ 10 บาท)';
+    if (!totalAmount || totalAmount < 20) {
+      this.errorMessage = 'กรุณากรอกจำนวนเงินที่ต้องการเติม (ยอดเติมขั้นต่ำ 20 บาท)';
       return;
     }
     
